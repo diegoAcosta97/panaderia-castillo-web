@@ -220,6 +220,69 @@ export interface Database {
         };
         Relationships: [];
       };
+      proveedores: {
+        Row: {
+          id: string;
+          nombre: string;
+          cuit: string | null;
+          telefono: string | null;
+          email: string | null;
+          direccion: string | null;
+          activo: boolean;
+        };
+        Insert: {
+          id?: string;
+          nombre: string;
+          cuit?: string | null;
+          telefono?: string | null;
+          email?: string | null;
+          direccion?: string | null;
+          activo?: boolean;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          cuit?: string | null;
+          telefono?: string | null;
+          email?: string | null;
+          direccion?: string | null;
+          activo?: boolean;
+        };
+        Relationships: [];
+      };
+      gastos: {
+        Row: {
+          id: string;
+          caja_turno_id: string;
+          proveedor_id: string;
+          concepto: string;
+          monto: number;
+          comprobante_url: string | null;
+          usuario_id: string;
+          fecha: string;
+        };
+        Insert: {
+          id?: string;
+          caja_turno_id: string;
+          proveedor_id: string;
+          concepto: string;
+          monto: number;
+          comprobante_url?: string | null;
+          usuario_id: string;
+          fecha?: string;
+        };
+        Update: {
+          id?: string;
+          caja_turno_id?: string;
+          proveedor_id?: string;
+          concepto?: string;
+          monto?: number;
+          comprobante_url?: string | null;
+          usuario_id?: string;
+          fecha?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;
