@@ -13,6 +13,7 @@ export interface Database {
       perfiles: {
         Row: {
           id: string;
+          email: string;
           rol: RolUsuario;
           nombre_completo: string | null;
           activo: boolean;
@@ -20,6 +21,7 @@ export interface Database {
         };
         Insert: {
           id: string;
+          email: string;
           rol?: RolUsuario;
           nombre_completo?: string | null;
           activo?: boolean;
@@ -27,11 +29,13 @@ export interface Database {
         };
         Update: {
           id?: string;
+          email?: string;
           rol?: RolUsuario;
           nombre_completo?: string | null;
           activo?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       configuracion_negocio: {
         Row: {
@@ -58,6 +62,7 @@ export interface Database {
           cuit?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: Record<never, never>;

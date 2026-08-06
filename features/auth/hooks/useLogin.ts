@@ -28,9 +28,7 @@ export function useLogin() {
         throw new Error("No se encontró un perfil asociado a este usuario.");
       }
 
-      // Redirección por rol pendiente de docs/backlog/02-roles.md#E2-1 — por ahora entra
-      // siempre a "/".
-      router.push("/");
+      router.push(perfil.rol === "administrador" ? "/admin" : "/pos");
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err, "Ocurrió un error al iniciar sesión"));
