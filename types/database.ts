@@ -6,6 +6,15 @@
 // Se amplía a medida que se aplican nuevas migraciones.
 
 export type RolUsuario = "administrador" | "cajero";
+export type TipoVentaProducto = "unidad" | "peso";
+export type TipoMovimientoStock =
+  | "venta"
+  | "anulacion_venta"
+  | "etiqueta_generada"
+  | "ajuste_control_stock"
+  | "ajuste_manual"
+  | "alta_inicial";
+export type EstadoCajaTurno = "abierta" | "cerrada";
 
 export interface Database {
   public: {
@@ -13,6 +22,7 @@ export interface Database {
       perfiles: {
         Row: {
           id: string;
+          email: string;
           rol: RolUsuario;
           nombre_completo: string | null;
           activo: boolean;
@@ -20,6 +30,7 @@ export interface Database {
         };
         Insert: {
           id: string;
+          email: string;
           rol?: RolUsuario;
           nombre_completo?: string | null;
           activo?: boolean;
@@ -27,11 +38,13 @@ export interface Database {
         };
         Update: {
           id?: string;
+          email?: string;
           rol?: RolUsuario;
           nombre_completo?: string | null;
           activo?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       configuracion_negocio: {
         Row: {
@@ -58,12 +71,163 @@ export interface Database {
           cuit?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      categorias: {
+        Row: {
+          id: string;
+          nombre: string;
+          activo: boolean;
+        };
+        Insert: {
+          id?: string;
+          nombre: string;
+          activo?: boolean;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          activo?: boolean;
+        };
+        Relationships: [];
+      };
+      productos: {
+        Row: {
+          id: string;
+          categoria_id: string;
+          nombre: string;
+          codigo_barras: string;
+          tipo_venta: TipoVentaProducto;
+          precio: number;
+          controla_stock: boolean;
+          stock_actual: number | null;
+          stock_minimo: number | null;
+          dias_vencimiento_default: number | null;
+          activo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          categoria_id: string;
+          nombre: string;
+          codigo_barras: string;
+          tipo_venta: TipoVentaProducto;
+          precio: number;
+          controla_stock?: boolean;
+          stock_actual?: number | null;
+          stock_minimo?: number | null;
+          dias_vencimiento_default?: number | null;
+          activo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          categoria_id?: string;
+          nombre?: string;
+          codigo_barras?: string;
+          tipo_venta?: TipoVentaProducto;
+          precio?: number;
+          controla_stock?: boolean;
+          stock_actual?: number | null;
+          stock_minimo?: number | null;
+          dias_vencimiento_default?: number | null;
+          activo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      movimientos_stock: {
+        Row: {
+          id: string;
+          producto_id: string;
+          tipo: TipoMovimientoStock;
+          cantidad: number;
+          stock_resultante: number;
+          referencia_id: string | null;
+          usuario_id: string;
+          fecha: string;
+        };
+        Insert: {
+          id?: string;
+          producto_id: string;
+          tipo: TipoMovimientoStock;
+          cantidad: number;
+          stock_resultante: number;
+          referencia_id?: string | null;
+          usuario_id: string;
+          fecha?: string;
+        };
+        Update: {
+          id?: string;
+          producto_id?: string;
+          tipo?: TipoMovimientoStock;
+          cantidad?: number;
+          stock_resultante?: number;
+          referencia_id?: string | null;
+          usuario_id?: string;
+          fecha?: string;
+        };
+        Relationships: [];
+      };
+      caja_turnos: {
+        Row: {
+          id: string;
+          fecha: string;
+          etiqueta_turno: string | null;
+          usuario_apertura_id: string;
+          monto_apertura: number;
+          fecha_apertura: string;
+          usuario_cierre_id: string | null;
+          monto_cierre_declarado: number | null;
+          efectivo_esperado: number | null;
+          diferencia: number | null;
+          fecha_cierre: string | null;
+          estado: EstadoCajaTurno;
+          observaciones: string | null;
+        };
+        Insert: {
+          id?: string;
+          fecha?: string;
+          etiqueta_turno?: string | null;
+          usuario_apertura_id: string;
+          monto_apertura: number;
+          fecha_apertura?: string;
+          usuario_cierre_id?: string | null;
+          monto_cierre_declarado?: number | null;
+          efectivo_esperado?: number | null;
+          diferencia?: number | null;
+          fecha_cierre?: string | null;
+          estado?: EstadoCajaTurno;
+          observaciones?: string | null;
+        };
+        Update: {
+          id?: string;
+          fecha?: string;
+          etiqueta_turno?: string | null;
+          usuario_apertura_id?: string;
+          monto_apertura?: number;
+          fecha_apertura?: string;
+          usuario_cierre_id?: string | null;
+          monto_cierre_declarado?: number | null;
+          efectivo_esperado?: number | null;
+          diferencia?: number | null;
+          fecha_cierre?: string | null;
+          estado?: EstadoCajaTurno;
+          observaciones?: string | null;
+        };
+        Relationships: [];
       };
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;
     Enums: {
       rol_usuario: RolUsuario;
+      tipo_venta_producto: TipoVentaProducto;
+      tipo_movimiento_stock: TipoMovimientoStock;
+      estado_caja_turno: EstadoCajaTurno;
     };
     CompositeTypes: Record<never, never>;
   };

@@ -45,10 +45,17 @@ etiquetas — faltaba en la primera versión de este documento. Las credenciales
 | Columna | Tipo | Notas |
 |---|---|---|
 | id | uuid PK | FK a `auth.users.id` |
+| email | text | denormalizado desde `auth.users.email` por el trigger de alta — no estaba en el diseño original, se agregó en `02-roles.md#E2-4` para listar usuarios sin llamar a la Admin API solo para mostrar un email |
 | rol | rol_usuario | default `cajero` |
 | nombre_completo | text | |
 | activo | boolean | default true |
 | created_at | timestamptz | default now() |
+
+RLS: cada usuario ve/edita su propio perfil (`perfiles_select_own`/`perfiles_update_own`,
+`00-fundamentos.md#E0-4`); un administrador ve/edita cualquier perfil
+(`perfiles_select_admin`/`perfiles_update_admin`, vía la función `is_administrador()`
+`SECURITY DEFINER` — evita la recursión de una policy de `perfiles` que consulta `perfiles`,
+`02-roles.md#E2-4`).
 
 ## Productos
 
