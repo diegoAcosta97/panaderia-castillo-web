@@ -14,6 +14,7 @@ export type TipoMovimientoStock =
   | "ajuste_control_stock"
   | "ajuste_manual"
   | "alta_inicial";
+export type EstadoCajaTurno = "abierta" | "cerrada";
 
 export interface Database {
   public: {
@@ -171,6 +172,54 @@ export interface Database {
         };
         Relationships: [];
       };
+      caja_turnos: {
+        Row: {
+          id: string;
+          fecha: string;
+          etiqueta_turno: string | null;
+          usuario_apertura_id: string;
+          monto_apertura: number;
+          fecha_apertura: string;
+          usuario_cierre_id: string | null;
+          monto_cierre_declarado: number | null;
+          efectivo_esperado: number | null;
+          diferencia: number | null;
+          fecha_cierre: string | null;
+          estado: EstadoCajaTurno;
+          observaciones: string | null;
+        };
+        Insert: {
+          id?: string;
+          fecha?: string;
+          etiqueta_turno?: string | null;
+          usuario_apertura_id: string;
+          monto_apertura: number;
+          fecha_apertura?: string;
+          usuario_cierre_id?: string | null;
+          monto_cierre_declarado?: number | null;
+          efectivo_esperado?: number | null;
+          diferencia?: number | null;
+          fecha_cierre?: string | null;
+          estado?: EstadoCajaTurno;
+          observaciones?: string | null;
+        };
+        Update: {
+          id?: string;
+          fecha?: string;
+          etiqueta_turno?: string | null;
+          usuario_apertura_id?: string;
+          monto_apertura?: number;
+          fecha_apertura?: string;
+          usuario_cierre_id?: string | null;
+          monto_cierre_declarado?: number | null;
+          efectivo_esperado?: number | null;
+          diferencia?: number | null;
+          fecha_cierre?: string | null;
+          estado?: EstadoCajaTurno;
+          observaciones?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;
@@ -178,6 +227,7 @@ export interface Database {
       rol_usuario: RolUsuario;
       tipo_venta_producto: TipoVentaProducto;
       tipo_movimiento_stock: TipoMovimientoStock;
+      estado_caja_turno: EstadoCajaTurno;
     };
     CompositeTypes: Record<never, never>;
   };
