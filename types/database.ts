@@ -6,6 +6,14 @@
 // Se amplía a medida que se aplican nuevas migraciones.
 
 export type RolUsuario = "administrador" | "cajero";
+export type TipoVentaProducto = "unidad" | "peso";
+export type TipoMovimientoStock =
+  | "venta"
+  | "anulacion_venta"
+  | "etiqueta_generada"
+  | "ajuste_control_stock"
+  | "ajuste_manual"
+  | "alta_inicial";
 
 export interface Database {
   public: {
@@ -64,11 +72,112 @@ export interface Database {
         };
         Relationships: [];
       };
+      categorias: {
+        Row: {
+          id: string;
+          nombre: string;
+          activo: boolean;
+        };
+        Insert: {
+          id?: string;
+          nombre: string;
+          activo?: boolean;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          activo?: boolean;
+        };
+        Relationships: [];
+      };
+      productos: {
+        Row: {
+          id: string;
+          categoria_id: string;
+          nombre: string;
+          codigo_barras: string;
+          tipo_venta: TipoVentaProducto;
+          precio: number;
+          controla_stock: boolean;
+          stock_actual: number | null;
+          stock_minimo: number | null;
+          dias_vencimiento_default: number | null;
+          activo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          categoria_id: string;
+          nombre: string;
+          codigo_barras: string;
+          tipo_venta: TipoVentaProducto;
+          precio: number;
+          controla_stock?: boolean;
+          stock_actual?: number | null;
+          stock_minimo?: number | null;
+          dias_vencimiento_default?: number | null;
+          activo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          categoria_id?: string;
+          nombre?: string;
+          codigo_barras?: string;
+          tipo_venta?: TipoVentaProducto;
+          precio?: number;
+          controla_stock?: boolean;
+          stock_actual?: number | null;
+          stock_minimo?: number | null;
+          dias_vencimiento_default?: number | null;
+          activo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      movimientos_stock: {
+        Row: {
+          id: string;
+          producto_id: string;
+          tipo: TipoMovimientoStock;
+          cantidad: number;
+          stock_resultante: number;
+          referencia_id: string | null;
+          usuario_id: string;
+          fecha: string;
+        };
+        Insert: {
+          id?: string;
+          producto_id: string;
+          tipo: TipoMovimientoStock;
+          cantidad: number;
+          stock_resultante: number;
+          referencia_id?: string | null;
+          usuario_id: string;
+          fecha?: string;
+        };
+        Update: {
+          id?: string;
+          producto_id?: string;
+          tipo?: TipoMovimientoStock;
+          cantidad?: number;
+          stock_resultante?: number;
+          referencia_id?: string | null;
+          usuario_id?: string;
+          fecha?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;
     Enums: {
       rol_usuario: RolUsuario;
+      tipo_venta_producto: TipoVentaProducto;
+      tipo_movimiento_stock: TipoMovimientoStock;
     };
     CompositeTypes: Record<never, never>;
   };
