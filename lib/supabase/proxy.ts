@@ -2,11 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 
-/**
- * Solo refresca la sesión por ahora. La lógica de "sin sesión, redirigir a /login" (el sistema
- * entero requiere login salvo /login y /api/mercadopago/webhook) se agrega en
- * docs/backlog/01-autenticacion.md#E1-4.
- */
+// RF-10.2: no hay ninguna pantalla pública. Todo lo que no sea /login o el webhook de Mercado
+// Pago (que MP llama server-to-server, sin sesión de usuario — se valida por firma en
+// docs/backlog/08-mercadopago.md#E8-3) exige sesión.
+function isPublicPath(pathname: string) {
+  return pathname === "/login" || pathname.startsWith("/api/mercadopago/webhook");
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -33,7 +35,15 @@ export async function updateSession(request: NextRequest) {
 
   // No correr código entre createServerClient y getClaims(). Un error acá puede hacer que
   // usuarios pierdan sesión sin explicación (ver nota de @supabase/ssr).
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
+  const pathname = request.nextUrl.pathname;
+
+  if (!isPublicPath(pathname) && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
 
   // IMPORTANTE: hay que devolver el objeto supabaseResponse tal cual. Si se crea una respuesta
   // nueva con NextResponse.next() hay que copiar las cookies, si no el browser y el server
