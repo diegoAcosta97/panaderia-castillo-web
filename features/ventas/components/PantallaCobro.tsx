@@ -26,7 +26,7 @@ export function PantallaCobro({
   renglones: RenglonCarritoUI[];
   resumen: ReturnType<typeof useResumenVenta>;
   onCancelar: () => void;
-  onConfirmada: (numeroComprobante: number) => void;
+  onConfirmada: (ventaId: string, numeroComprobante: number) => void;
 }) {
   const [formaPago, setFormaPago] = useState<FormaPago>("efectivo");
   const [montoEfectivo, setMontoEfectivo] = useState(resumen.total.toFixed(2));
@@ -51,7 +51,7 @@ export function PantallaCobro({
     if (!resultado) return;
 
     if (resultado.estado === "completada") {
-      onConfirmada(resultado.numero_comprobante);
+      onConfirmada(resultado.venta_id, resultado.numero_comprobante);
       return;
     }
 

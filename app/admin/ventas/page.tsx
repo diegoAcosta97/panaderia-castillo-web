@@ -85,9 +85,19 @@ export default async function VentasHistorialPage({
               <TableCell>${venta.total}</TableCell>
               <TableCell>{ETIQUETA_ESTADO[venta.estado] ?? venta.estado}</TableCell>
               <TableCell>
-                <Link href={`/admin/ventas/${venta.id}`} className="text-sm underline">
-                  Ver
-                </Link>
+                <div className="flex gap-3">
+                  <Link href={`/admin/ventas/${venta.id}`} className="text-sm underline">
+                    Ver
+                  </Link>
+                  <Link
+                    href={`/pos/comprobante/${venta.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm underline"
+                  >
+                    Comprobante
+                  </Link>
+                </div>
               </TableCell>
             </TableRow>
           ))}

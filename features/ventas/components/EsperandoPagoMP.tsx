@@ -19,7 +19,7 @@ export function EsperandoPagoMP({
   onCancelar,
 }: {
   ventaId: string;
-  onConfirmada: (numeroComprobante: number) => void;
+  onConfirmada: (ventaId: string, numeroComprobante: number) => void;
   onCancelar: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export function EsperandoPagoMP({
         return;
       }
       if (data.estado === "completada") {
-        onConfirmada(data.numero_comprobante);
+        onConfirmada(ventaId, data.numero_comprobante);
       }
     }
 
