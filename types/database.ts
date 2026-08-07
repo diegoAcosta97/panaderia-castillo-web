@@ -18,6 +18,11 @@ export type EstadoCajaTurno = "abierta" | "cerrada";
 export type TipoBeneficioOferta = "precio_fijo" | "descuento_porcentaje" | "descuento_monto";
 export type TipoEfectoDescuento = "porcentaje" | "monto_fijo";
 export type TipoCondicionDescuento = "monto_minimo" | "producto_incluido" | "categoria_incluida";
+export type EstadoVenta = "pendiente_pago" | "completada" | "anulada";
+export type MedioPago = "efectivo" | "mercado_pago";
+export type EstadoPagoMedio = "pendiente" | "acreditado" | "rechazado";
+
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
   public: {
@@ -406,9 +411,180 @@ export interface Database {
         };
         Relationships: [];
       };
+      ventas: {
+        Row: {
+          id: string;
+          numero_comprobante: number;
+          caja_turno_id: string;
+          usuario_id: string;
+          subtotal: number;
+          total_ofertas: number;
+          total_descuentos: number;
+          total: number;
+          estado: EstadoVenta;
+          fecha: string;
+          anulada_por_id: string | null;
+          fecha_anulacion: string | null;
+          motivo_anulacion: string | null;
+        };
+        Insert: {
+          id?: string;
+          numero_comprobante?: number;
+          caja_turno_id: string;
+          usuario_id: string;
+          subtotal: number;
+          total_ofertas?: number;
+          total_descuentos?: number;
+          total: number;
+          estado?: EstadoVenta;
+          fecha?: string;
+          anulada_por_id?: string | null;
+          fecha_anulacion?: string | null;
+          motivo_anulacion?: string | null;
+        };
+        Update: {
+          id?: string;
+          numero_comprobante?: number;
+          caja_turno_id?: string;
+          usuario_id?: string;
+          subtotal?: number;
+          total_ofertas?: number;
+          total_descuentos?: number;
+          total?: number;
+          estado?: EstadoVenta;
+          fecha?: string;
+          anulada_por_id?: string | null;
+          fecha_anulacion?: string | null;
+          motivo_anulacion?: string | null;
+        };
+        Relationships: [];
+      };
+      renglones_venta: {
+        Row: {
+          id: string;
+          venta_id: string;
+          producto_id: string;
+          cantidad: number;
+          precio_unitario_snapshot: number;
+          subtotal: number;
+        };
+        Insert: {
+          id?: string;
+          venta_id: string;
+          producto_id: string;
+          cantidad: number;
+          precio_unitario_snapshot: number;
+          subtotal: number;
+        };
+        Update: {
+          id?: string;
+          venta_id?: string;
+          producto_id?: string;
+          cantidad?: number;
+          precio_unitario_snapshot?: number;
+          subtotal?: number;
+        };
+        Relationships: [];
+      };
+      venta_ofertas_aplicadas: {
+        Row: {
+          id: string;
+          venta_id: string;
+          oferta_id: string;
+          veces_aplicada: number;
+          monto_beneficio: number;
+        };
+        Insert: {
+          id?: string;
+          venta_id: string;
+          oferta_id: string;
+          veces_aplicada: number;
+          monto_beneficio: number;
+        };
+        Update: {
+          id?: string;
+          venta_id?: string;
+          oferta_id?: string;
+          veces_aplicada?: number;
+          monto_beneficio?: number;
+        };
+        Relationships: [];
+      };
+      venta_descuentos_aplicados: {
+        Row: {
+          id: string;
+          venta_id: string;
+          descuento_id: string;
+          monto_aplicado: number;
+        };
+        Insert: {
+          id?: string;
+          venta_id: string;
+          descuento_id: string;
+          monto_aplicado: number;
+        };
+        Update: {
+          id?: string;
+          venta_id?: string;
+          descuento_id?: string;
+          monto_aplicado?: number;
+        };
+        Relationships: [];
+      };
+      venta_medios_pago: {
+        Row: {
+          id: string;
+          venta_id: string;
+          medio_pago: MedioPago;
+          monto: number;
+          estado_pago: EstadoPagoMedio;
+          mp_payment_id: string | null;
+          mp_referencia_externa: string | null;
+          fecha_acreditacion: string | null;
+        };
+        Insert: {
+          id?: string;
+          venta_id: string;
+          medio_pago: MedioPago;
+          monto: number;
+          estado_pago?: EstadoPagoMedio;
+          mp_payment_id?: string | null;
+          mp_referencia_externa?: string | null;
+          fecha_acreditacion?: string | null;
+        };
+        Update: {
+          id?: string;
+          venta_id?: string;
+          medio_pago?: MedioPago;
+          monto?: number;
+          estado_pago?: EstadoPagoMedio;
+          mp_payment_id?: string | null;
+          mp_referencia_externa?: string | null;
+          fecha_acreditacion?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
-    Functions: Record<never, never>;
+    Functions: {
+      confirmar_venta: {
+        Args: {
+          p_caja_turno_id: string;
+          p_renglones: Json;
+          p_ofertas: Json;
+          p_descuentos: Json;
+          p_medios_pago: Json;
+        };
+        Returns: Json;
+      };
+      anular_venta: {
+        Args: {
+          p_venta_id: string;
+          p_motivo: string;
+        };
+        Returns: undefined;
+      };
+    };
     Enums: {
       rol_usuario: RolUsuario;
       tipo_venta_producto: TipoVentaProducto;
@@ -417,6 +593,9 @@ export interface Database {
       tipo_efecto_descuento: TipoEfectoDescuento;
       tipo_condicion_descuento: TipoCondicionDescuento;
       estado_caja_turno: EstadoCajaTurno;
+      estado_venta: EstadoVenta;
+      medio_pago: MedioPago;
+      estado_pago_medio: EstadoPagoMedio;
     };
     CompositeTypes: Record<never, never>;
   };
