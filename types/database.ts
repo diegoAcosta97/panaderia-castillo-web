@@ -62,6 +62,8 @@ export interface Database {
           telefono: string | null;
           cuit: string | null;
           updated_at: string;
+          mercadopago_store_id: string | null;
+          mercadopago_external_pos_id: string | null;
         };
         Insert: {
           id?: string;
@@ -70,6 +72,8 @@ export interface Database {
           telefono?: string | null;
           cuit?: string | null;
           updated_at?: string;
+          mercadopago_store_id?: string | null;
+          mercadopago_external_pos_id?: string | null;
         };
         Update: {
           id?: string;
@@ -78,6 +82,8 @@ export interface Database {
           telefono?: string | null;
           cuit?: string | null;
           updated_at?: string;
+          mercadopago_store_id?: string | null;
+          mercadopago_external_pos_id?: string | null;
         };
         Relationships: [];
       };
@@ -583,6 +589,22 @@ export interface Database {
           p_motivo: string;
         };
         Returns: undefined;
+      };
+      registrar_qr_pago: {
+        Args: {
+          p_venta_medio_pago_id: string;
+          p_mp_referencia_externa: string;
+          p_mp_payment_id: string;
+        };
+        Returns: undefined;
+      };
+      procesar_resultado_pago_mp: {
+        Args: {
+          p_mp_referencia_externa: string;
+          p_mp_payment_id: string;
+          p_acreditado: boolean;
+        };
+        Returns: Json;
       };
     };
     Enums: {

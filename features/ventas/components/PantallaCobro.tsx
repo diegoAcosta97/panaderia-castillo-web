@@ -5,17 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ResumenVenta } from "@/features/ventas/components/ResumenVenta";
+import { EsperandoPagoMP } from "@/features/ventas/components/EsperandoPagoMP";
 import { useCobro } from "@/features/ventas/hooks/useCobro";
+import { generarQrParaVenta } from "@/features/mercadopago/actions";
+import { getErrorMessage } from "@/lib/errors";
 import type { RenglonCarritoUI } from "@/features/ventas/hooks/useCarrito";
 import type { useResumenVenta } from "@/features/ventas/hooks/useResumenVenta";
 import type { MedioPago } from "@/types/database";
 
 type FormaPago = "efectivo" | "mercado_pago" | "combinado";
 
-// E7-6: el flujo de Mercado Pago en sí (QR, espera de confirmación) llega en EPIC 8 — acá se
-// arma la mecánica de reparto entre medios (con la suma exacta garantizada, nunca calculada a
-// mano por el cajero) y se deja el punto de integración: mientras la porción de Mercado Pago
-// sea > 0, "Confirmar venta" queda deshabilitado con el motivo a la vista.
 export function PantallaCobro({
   cajaTurnoId,
   renglones,
@@ -31,21 +30,54 @@ export function PantallaCobro({
 }) {
   const [formaPago, setFormaPago] = useState<FormaPago>("efectivo");
   const [montoEfectivo, setMontoEfectivo] = useState(resumen.total.toFixed(2));
+  const [esperandoPago, setEsperandoPago] = useState<{ ventaId: string; qrData: string } | null>(
+    null,
+  );
+  const [errorQr, setErrorQr] = useState<string | null>(null);
+  const [generandoQr, setGenerandoQr] = useState(false);
   const { cobrar, error, isLoading } = useCobro();
 
   const total = resumen.total;
   const efectivo =
     formaPago === "efectivo" ? total : formaPago === "combinado" ? Number(montoEfectivo) || 0 : 0;
   const mercadoPago = Math.round((total - efectivo) * 100) / 100;
-  const habilitado = formaPago === "efectivo" || (formaPago === "combinado" && mercadoPago === 0);
+  const habilitado = efectivo > 0 || mercadoPago > 0;
 
   async function handleConfirmar() {
+    setErrorQr(null);
     const mediosPago: { medio_pago: MedioPago; monto: number }[] = [];
     if (efectivo > 0) mediosPago.push({ medio_pago: "efectivo", monto: efectivo });
     if (mercadoPago > 0) mediosPago.push({ medio_pago: "mercado_pago", monto: mercadoPago });
 
     const resultado = await cobrar({ cajaTurnoId, renglones, resumen, mediosPago });
-    if (resultado) onConfirmada(resultado.numero_comprobante);
+    if (!resultado) return;
+
+    if (resultado.estado === "completada") {
+      onConfirmada(resultado.numero_comprobante);
+      return;
+    }
+
+    // pendiente_pago: hay una porción en Mercado Pago, hace falta generar el QR (E8-2).
+    setGenerandoQr(true);
+    try {
+      const { qrData } = await generarQrParaVenta(resultado.venta_id);
+      setEsperandoPago({ ventaId: resultado.venta_id, qrData });
+    } catch (err) {
+      setErrorQr(getErrorMessage(err, "No se pudo generar el QR de Mercado Pago"));
+    } finally {
+      setGenerandoQr(false);
+    }
+  }
+
+  if (esperandoPago) {
+    return (
+      <EsperandoPagoMP
+        ventaId={esperandoPago.ventaId}
+        qrData={esperandoPago.qrData}
+        onConfirmada={onConfirmada}
+        onCancelar={() => setEsperandoPago(null)}
+      />
+    );
   }
 
   return (
@@ -77,12 +109,6 @@ export function PantallaCobro({
         </Button>
       </div>
 
-      {formaPago === "mercado_pago" && (
-        <p className="text-sm text-muted-foreground">
-          Mercado Pago se integra en EPIC 8 — todavía no está disponible para cobrar.
-        </p>
-      )}
-
       {formaPago === "combinado" && (
         <div className="flex max-w-sm flex-col gap-2">
           <div className="grid gap-2">
@@ -97,21 +123,31 @@ export function PantallaCobro({
               onChange={(e) => setMontoEfectivo(e.target.value)}
             />
           </div>
-          <p className="text-sm text-muted-foreground">
-            Mercado Pago: ${mercadoPago.toFixed(2)}
-            {mercadoPago > 0 && " (todavía no disponible, EPIC 8)"}
-          </p>
+          <p className="text-sm text-muted-foreground">Mercado Pago: ${mercadoPago.toFixed(2)}</p>
         </div>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {mercadoPago > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Se va a generar un QR por ${mercadoPago.toFixed(2)} para que el cliente escanee con la
+          app de Mercado Pago.
+        </p>
+      )}
+
+      {(error || errorQr) && <p className="text-sm text-destructive">{error || errorQr}</p>}
 
       <div className="flex gap-2">
         <Button type="button" variant="outline" onClick={onCancelar} disabled={isLoading}>
           Volver al carrito
         </Button>
-        <Button type="button" onClick={handleConfirmar} disabled={!habilitado || isLoading}>
-          {isLoading ? "Confirmando..." : `Confirmar venta ($${total.toFixed(2)})`}
+        <Button
+          type="button"
+          onClick={handleConfirmar}
+          disabled={!habilitado || isLoading || generandoQr}
+        >
+          {isLoading || generandoQr
+            ? "Confirmando..."
+            : `Confirmar venta ($${total.toFixed(2)})`}
         </Button>
       </div>
     </div>

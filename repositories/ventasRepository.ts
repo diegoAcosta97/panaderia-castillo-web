@@ -132,6 +132,47 @@ export async function anularVenta(
   if (error) throw error;
 }
 
+// E8-2: guarda la referencia de la orden de Mercado Pago en el medio de pago pendiente.
+export async function registrarQrPago(
+  supabase: SupabaseClient<Database>,
+  ventaMedioPagoId: string,
+  mpReferenciaExterna: string,
+  mpPaymentId: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("registrar_qr_pago", {
+    p_venta_medio_pago_id: ventaMedioPagoId,
+    p_mp_referencia_externa: mpReferenciaExterna,
+    p_mp_payment_id: mpPaymentId,
+  });
+  if (error) throw error;
+}
+
+export interface ResultadoProcesarPagoMP {
+  ya_procesado?: boolean;
+  acreditado?: boolean;
+  venta_completada?: boolean;
+  venta_id: string;
+  numero_comprobante?: number;
+}
+
+// E8-3: la llama únicamente el webhook con el cliente admin (service_role) -- la función en sí
+// revoca el permiso a `authenticated`, así que esto nunca funcionaría con la sesión de un
+// usuario logueado, ni siquiera un administrador.
+export async function procesarResultadoPagoMP(
+  supabase: SupabaseClient<Database>,
+  mpReferenciaExterna: string,
+  mpPaymentId: string,
+  acreditado: boolean,
+): Promise<ResultadoProcesarPagoMP> {
+  const { data, error } = await supabase.rpc("procesar_resultado_pago_mp", {
+    p_mp_referencia_externa: mpReferenciaExterna,
+    p_mp_payment_id: mpPaymentId,
+    p_acreditado: acreditado,
+  });
+  if (error) throw error;
+  return data as unknown as ResultadoProcesarPagoMP;
+}
+
 // Admin (E7-8): historial completo. Un cajero solo vería lo suyo/turno abierto de todos modos
 // (RLS de ventas_select, docs/backlog/07-punto-de-venta.md#E7-1).
 export async function listVentas(
