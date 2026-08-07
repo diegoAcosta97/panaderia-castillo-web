@@ -546,6 +546,7 @@ export interface Database {
           estado_pago: EstadoPagoMedio;
           mp_payment_id: string | null;
           mp_referencia_externa: string | null;
+          mp_orden_id: string | null;
           fecha_acreditacion: string | null;
         };
         Insert: {
@@ -556,6 +557,7 @@ export interface Database {
           estado_pago?: EstadoPagoMedio;
           mp_payment_id?: string | null;
           mp_referencia_externa?: string | null;
+          mp_orden_id?: string | null;
           fecha_acreditacion?: string | null;
         };
         Update: {
@@ -566,6 +568,7 @@ export interface Database {
           estado_pago?: EstadoPagoMedio;
           mp_payment_id?: string | null;
           mp_referencia_externa?: string | null;
+          mp_orden_id?: string | null;
           fecha_acreditacion?: string | null;
         };
         Relationships: [];
@@ -595,8 +598,21 @@ export interface Database {
           p_venta_medio_pago_id: string;
           p_mp_referencia_externa: string;
           p_mp_payment_id: string;
+          p_mp_orden_id: string;
         };
         Returns: undefined;
+      };
+      hay_pago_mp_pendiente: {
+        Args: {
+          p_excluir_venta_id: string;
+        };
+        Returns: boolean;
+      };
+      cancelar_venta_pendiente: {
+        Args: {
+          p_venta_id: string;
+        };
+        Returns: Json;
       };
       procesar_resultado_pago_mp: {
         Args: {

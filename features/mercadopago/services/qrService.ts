@@ -1,9 +1,14 @@
 import "server-only";
-import { mercadoPagoFetch } from "@/lib/mercadopago";
+import { mercadoPagoFetch, MercadoPagoError } from "@/lib/mercadopago";
 
 // RF-7.1. Forma de la orden confirmada empíricamente contra la API real (sandbox) — la
 // documentación pública resumida no coincidía del todo (ver docs/backlog/08-mercadopago.md#E8-2
 // para el detalle de lo que costó llegar a este payload exacto).
+//
+// Modo "static" (no "dynamic"): el QR es fijo por caja, se imprime una sola vez (RF-7.1) y el
+// cliente escanea siempre el mismo cartel -- cada venta solo asocia un monto nuevo a esa caja
+// del lado de la API, sin generar una imagen de QR distinta. Por eso una orden en modo static
+// no trae `type_response.qr_data`: no hay nada nuevo que renderizar.
 export interface CrearOrdenQrInput {
   externalPosId: string;
   externalReference: string;
@@ -13,7 +18,6 @@ export interface CrearOrdenQrInput {
 
 export interface OrdenQr {
   ordenId: string;
-  qrData: string;
   paymentId: string;
 }
 
@@ -22,7 +26,6 @@ export interface RespuestaOrdenQr {
   status: string;
   external_reference: string;
   transactions: { payments: { id: string; amount: string; status: string; status_detail: string }[] };
-  type_response: { qr_data: string };
 }
 
 // Confirmado con la API real: rechaza montos menores a $15.
@@ -46,7 +49,7 @@ export async function crearOrdenQr(input: CrearOrdenQrInput): Promise<OrdenQr> {
       external_reference: input.externalReference,
       description: input.descripcion.slice(0, 150),
       config: {
-        qr: { external_pos_id: input.externalPosId, mode: "dynamic" },
+        qr: { external_pos_id: input.externalPosId, mode: "static" },
       },
       transactions: { payments: [{ amount: montoTexto }] },
     }),
@@ -54,9 +57,26 @@ export async function crearOrdenQr(input: CrearOrdenQrInput): Promise<OrdenQr> {
 
   return {
     ordenId: data.id,
-    qrData: data.type_response.qr_data,
     paymentId: data.transactions.payments[0].id,
   };
+}
+
+// Cancela una orden abandonada (el cajero canceló el cobro antes de que el cliente pague) para
+// liberar el QR estático de la caja. MP solo permite cancelar mientras status="created" (409
+// en cualquier otro estado, p.ej. si el cliente ya la está pagando) -- eso no es un error real
+// para quien llama: la venta ya se canceló del lado de la base de todos modos
+// (cancelar_venta_pendiente corre antes, ver features/mercadopago/actions.ts), así que acá se
+// swallowea en vez de propagarse.
+export async function cancelarOrdenQr(ordenId: string): Promise<void> {
+  try {
+    await mercadoPagoFetch(`/v1/orders/${ordenId}/cancel`, {
+      method: "POST",
+      headers: { "X-Idempotency-Key": crypto.randomUUID() },
+    });
+  } catch (err) {
+    if (err instanceof MercadoPagoError && err.status === 409) return;
+    throw err;
+  }
 }
 
 // E8-3: la única fuente de verdad sobre si una orden está pagada -- el webhook nunca confía en

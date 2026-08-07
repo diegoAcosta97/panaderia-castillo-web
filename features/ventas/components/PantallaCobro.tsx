@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ResumenVenta } from "@/features/ventas/components/ResumenVenta";
 import { EsperandoPagoMP } from "@/features/ventas/components/EsperandoPagoMP";
 import { useCobro } from "@/features/ventas/hooks/useCobro";
-import { generarQrParaVenta } from "@/features/mercadopago/actions";
+import { generarQrParaVenta, cancelarPagoMPPendiente } from "@/features/mercadopago/actions";
 import { getErrorMessage } from "@/lib/errors";
 import type { RenglonCarritoUI } from "@/features/ventas/hooks/useCarrito";
 import type { useResumenVenta } from "@/features/ventas/hooks/useResumenVenta";
@@ -30,9 +30,7 @@ export function PantallaCobro({
 }) {
   const [formaPago, setFormaPago] = useState<FormaPago>("efectivo");
   const [montoEfectivo, setMontoEfectivo] = useState(resumen.total.toFixed(2));
-  const [esperandoPago, setEsperandoPago] = useState<{ ventaId: string; qrData: string } | null>(
-    null,
-  );
+  const [esperandoPago, setEsperandoPago] = useState<{ ventaId: string } | null>(null);
   const [errorQr, setErrorQr] = useState<string | null>(null);
   const [generandoQr, setGenerandoQr] = useState(false);
   const { cobrar, error, isLoading } = useCobro();
@@ -57,13 +55,24 @@ export function PantallaCobro({
       return;
     }
 
-    // pendiente_pago: hay una porción en Mercado Pago, hace falta generar el QR (E8-2).
+    // pendiente_pago: hay una porción en Mercado Pago, hace falta asociar el monto al QR
+    // estático de la caja (E8-2). confirmar_venta ya insertó la venta (y su venta_medios_pago
+    // 'pendiente') antes de llegar acá -- si esto falla (el chequeo de un cobro ya en curso,
+    // Mercado Pago caído, lo que sea), esa venta queda huérfana y sin cancelar bloquearía
+    // cualquier cobro con Mercado Pago siguiente para siempre (ella misma cuenta como "cobro
+    // pendiente"). Por eso el catch cancela la venta que se acaba de crear antes de mostrar el
+    // error -- reintentar después queda limpio.
     setGenerandoQr(true);
     try {
-      const { qrData } = await generarQrParaVenta(resultado.venta_id);
-      setEsperandoPago({ ventaId: resultado.venta_id, qrData });
+      await generarQrParaVenta(resultado.venta_id);
+      setEsperandoPago({ ventaId: resultado.venta_id });
     } catch (err) {
-      setErrorQr(getErrorMessage(err, "No se pudo generar el QR de Mercado Pago"));
+      setErrorQr(getErrorMessage(err, "No se pudo generar el cobro de Mercado Pago"));
+      try {
+        await cancelarPagoMPPendiente(resultado.venta_id);
+      } catch (cancelErr) {
+        console.error("No se pudo limpiar la venta pendiente tras el error de Mercado Pago:", cancelErr);
+      }
     } finally {
       setGenerandoQr(false);
     }
@@ -73,7 +82,6 @@ export function PantallaCobro({
     return (
       <EsperandoPagoMP
         ventaId={esperandoPago.ventaId}
-        qrData={esperandoPago.qrData}
         onConfirmada={onConfirmada}
         onCancelar={() => setEsperandoPago(null)}
       />
@@ -129,8 +137,8 @@ export function PantallaCobro({
 
       {mercadoPago > 0 && (
         <p className="text-sm text-muted-foreground">
-          Se va a generar un QR por ${mercadoPago.toFixed(2)} para que el cliente escanee con la
-          app de Mercado Pago.
+          Se va a cobrar ${mercadoPago.toFixed(2)} por el QR fijo de la caja: decile al cliente
+          que lo escanee con la app de Mercado Pago.
         </p>
       )}
 

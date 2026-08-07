@@ -138,13 +138,48 @@ export async function registrarQrPago(
   ventaMedioPagoId: string,
   mpReferenciaExterna: string,
   mpPaymentId: string,
+  mpOrdenId: string,
 ): Promise<void> {
   const { error } = await supabase.rpc("registrar_qr_pago", {
     p_venta_medio_pago_id: ventaMedioPagoId,
     p_mp_referencia_externa: mpReferenciaExterna,
     p_mp_payment_id: mpPaymentId,
+    p_mp_orden_id: mpOrdenId,
   });
   if (error) throw error;
+}
+
+// QR estático (docs/backlog/08-mercadopago.md#E8-2): con una sola caja física solo puede haber
+// una orden de Mercado Pago vigente a la vez -- esto chequea si ya hay una antes de generar otra
+// (excluyendo la propia venta: confirmar_venta ya insertó su venta_medios_pago 'pendiente' antes
+// de que se llegue a este chequeo).
+export async function hayPagoMercadoPagoPendiente(
+  supabase: SupabaseClient<Database>,
+  ventaId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("hay_pago_mp_pendiente", {
+    p_excluir_venta_id: ventaId,
+  });
+  if (error) throw error;
+  return data as unknown as boolean;
+}
+
+export interface ResultadoCancelarVentaPendiente {
+  mp_orden_id: string | null;
+}
+
+// Cancela una venta pendiente_pago que el cajero abandonó (el cliente no llegó a pagar) --
+// libera la caja para la próxima venta. No requiere admin: a diferencia de anularVenta, acá no
+// hay stock ni dinero que revertir.
+export async function cancelarVentaPendiente(
+  supabase: SupabaseClient<Database>,
+  ventaId: string,
+): Promise<ResultadoCancelarVentaPendiente> {
+  const { data, error } = await supabase.rpc("cancelar_venta_pendiente", {
+    p_venta_id: ventaId,
+  });
+  if (error) throw error;
+  return data as unknown as ResultadoCancelarVentaPendiente;
 }
 
 export interface ResultadoProcesarPagoMP {
