@@ -45,6 +45,9 @@ Apertura, cierre y arqueo de turno. Caja única del local, turnos secuenciales (
   `arqueoService.calcularEfectivoEsperado` implementado con **ventas y gastos en placeholder 0**
   (documentado con TODOs explícitos apuntando a EPIC 5 y EPIC 7) tal como preveía la nota de
   orden de ejecución de este backlog — por ahora `efectivo_esperado = monto_apertura`.
+  **Actualización (2026-08-06, `05-proveedores-gastos.md#E5-4`):** el término de gastos ya no
+  es placeholder — `efectivo_esperado = monto_apertura + ventas_efectivo(0) −
+  gastos_efectivo(real)`. Falta solo el término de ventas (EPIC 7).
 - **Depende de:** E4-2
 - **Archivos/módulos:** `app/pos/caja/cierre/page.tsx`,
   `features/caja/{actions.ts,services/arqueoService.ts,components/CierreTurnoForm.tsx}`

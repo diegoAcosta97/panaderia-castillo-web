@@ -18,9 +18,14 @@ export default async function PosHome() {
           {session?.perfil.nombre_completo || session?.perfil.email} · {session?.rol}
         </p>
       </div>
-      <Link href="/pos/caja" className={buttonVariants({ variant: "outline" })}>
-        Caja
-      </Link>
+      <div className="flex gap-2">
+        <Link href="/pos/caja" className={buttonVariants({ variant: "outline" })}>
+          Caja
+        </Link>
+        <Link href="/pos/gastos" className={buttonVariants({ variant: "outline" })}>
+          Gastos
+        </Link>
+      </div>
       <LogoutButton />
     </div>
   );

@@ -15,6 +15,9 @@ export type TipoMovimientoStock =
   | "ajuste_manual"
   | "alta_inicial";
 export type EstadoCajaTurno = "abierta" | "cerrada";
+export type TipoBeneficioOferta = "precio_fijo" | "descuento_porcentaje" | "descuento_monto";
+export type TipoEfectoDescuento = "porcentaje" | "monto_fijo";
+export type TipoCondicionDescuento = "monto_minimo" | "producto_incluido" | "categoria_incluida";
 
 export interface Database {
   public: {
@@ -220,6 +223,189 @@ export interface Database {
         };
         Relationships: [];
       };
+      proveedores: {
+        Row: {
+          id: string;
+          nombre: string;
+          cuit: string | null;
+          telefono: string | null;
+          email: string | null;
+          direccion: string | null;
+          activo: boolean;
+        };
+        Insert: {
+          id?: string;
+          nombre: string;
+          cuit?: string | null;
+          telefono?: string | null;
+          email?: string | null;
+          direccion?: string | null;
+          activo?: boolean;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          cuit?: string | null;
+          telefono?: string | null;
+          email?: string | null;
+          direccion?: string | null;
+          activo?: boolean;
+        };
+        Relationships: [];
+      };
+      gastos: {
+        Row: {
+          id: string;
+          caja_turno_id: string;
+          proveedor_id: string;
+          concepto: string;
+          monto: number;
+          comprobante_url: string | null;
+          usuario_id: string;
+          fecha: string;
+        };
+        Insert: {
+          id?: string;
+          caja_turno_id: string;
+          proveedor_id: string;
+          concepto: string;
+          monto: number;
+          comprobante_url?: string | null;
+          usuario_id: string;
+          fecha?: string;
+        };
+        Update: {
+          id?: string;
+          caja_turno_id?: string;
+          proveedor_id?: string;
+          concepto?: string;
+          monto?: number;
+          comprobante_url?: string | null;
+          usuario_id?: string;
+          fecha?: string;
+        };
+        Relationships: [];
+      };
+      ofertas: {
+        Row: {
+          id: string;
+          nombre: string;
+          descripcion: string | null;
+          tipo_beneficio: TipoBeneficioOferta;
+          valor_beneficio: number;
+          max_aplicaciones_por_venta: number | null;
+          fecha_inicio: string | null;
+          fecha_fin: string | null;
+          activo: boolean;
+        };
+        Insert: {
+          id?: string;
+          nombre: string;
+          descripcion?: string | null;
+          tipo_beneficio: TipoBeneficioOferta;
+          valor_beneficio: number;
+          max_aplicaciones_por_venta?: number | null;
+          fecha_inicio?: string | null;
+          fecha_fin?: string | null;
+          activo?: boolean;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          descripcion?: string | null;
+          tipo_beneficio?: TipoBeneficioOferta;
+          valor_beneficio?: number;
+          max_aplicaciones_por_venta?: number | null;
+          fecha_inicio?: string | null;
+          fecha_fin?: string | null;
+          activo?: boolean;
+        };
+        Relationships: [];
+      };
+      oferta_items: {
+        Row: {
+          id: string;
+          oferta_id: string;
+          producto_id: string;
+          cantidad_requerida: number;
+        };
+        Insert: {
+          id?: string;
+          oferta_id: string;
+          producto_id: string;
+          cantidad_requerida: number;
+        };
+        Update: {
+          id?: string;
+          oferta_id?: string;
+          producto_id?: string;
+          cantidad_requerida?: number;
+        };
+        Relationships: [];
+      };
+      descuentos: {
+        Row: {
+          id: string;
+          nombre: string;
+          descripcion: string | null;
+          tipo_efecto: TipoEfectoDescuento;
+          valor_efecto: number;
+          fecha_inicio: string | null;
+          fecha_fin: string | null;
+          activo: boolean;
+        };
+        Insert: {
+          id?: string;
+          nombre: string;
+          descripcion?: string | null;
+          tipo_efecto: TipoEfectoDescuento;
+          valor_efecto: number;
+          fecha_inicio?: string | null;
+          fecha_fin?: string | null;
+          activo?: boolean;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          descripcion?: string | null;
+          tipo_efecto?: TipoEfectoDescuento;
+          valor_efecto?: number;
+          fecha_inicio?: string | null;
+          fecha_fin?: string | null;
+          activo?: boolean;
+        };
+        Relationships: [];
+      };
+      descuento_condiciones: {
+        Row: {
+          id: string;
+          descuento_id: string;
+          tipo_condicion: TipoCondicionDescuento;
+          monto_minimo: number | null;
+          producto_id: string | null;
+          categoria_id: string | null;
+          cantidad_minima: number | null;
+        };
+        Insert: {
+          id?: string;
+          descuento_id: string;
+          tipo_condicion: TipoCondicionDescuento;
+          monto_minimo?: number | null;
+          producto_id?: string | null;
+          categoria_id?: string | null;
+          cantidad_minima?: number | null;
+        };
+        Update: {
+          id?: string;
+          descuento_id?: string;
+          tipo_condicion?: TipoCondicionDescuento;
+          monto_minimo?: number | null;
+          producto_id?: string | null;
+          categoria_id?: string | null;
+          cantidad_minima?: number | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;
@@ -227,6 +413,9 @@ export interface Database {
       rol_usuario: RolUsuario;
       tipo_venta_producto: TipoVentaProducto;
       tipo_movimiento_stock: TipoMovimientoStock;
+      tipo_beneficio_oferta: TipoBeneficioOferta;
+      tipo_efecto_descuento: TipoEfectoDescuento;
+      tipo_condicion_descuento: TipoCondicionDescuento;
       estado_caja_turno: EstadoCajaTurno;
     };
     CompositeTypes: Record<never, never>;
