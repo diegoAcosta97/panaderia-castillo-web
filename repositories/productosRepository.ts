@@ -42,6 +42,19 @@ export async function listProductosBajoStock(
   return data.filter((p) => p.stock_actual !== null && p.stock_actual < p.stock_minimo!);
 }
 
+// E11-2: productos elegibles para un conteo de stock -- solo los que controlan stock (RF-9.1).
+export async function listProductosControlaStock(
+  supabase: SupabaseClient<Database>,
+): Promise<Producto[]> {
+  const { data, error } = await supabase
+    .from("productos")
+    .select("*")
+    .eq("controla_stock", true)
+    .order("nombre");
+  if (error) throw error;
+  return data;
+}
+
 export async function buscarPorCodigoBarras(
   supabase: SupabaseClient<Database>,
   codigoBarras: string,

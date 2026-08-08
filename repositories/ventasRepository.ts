@@ -132,6 +132,112 @@ export async function anularVenta(
   if (error) throw error;
 }
 
+// E8-2: guarda la referencia de la orden de Mercado Pago en el medio de pago pendiente.
+export async function registrarQrPago(
+  supabase: SupabaseClient<Database>,
+  ventaMedioPagoId: string,
+  mpReferenciaExterna: string,
+  mpPaymentId: string,
+  mpOrdenId: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("registrar_qr_pago", {
+    p_venta_medio_pago_id: ventaMedioPagoId,
+    p_mp_referencia_externa: mpReferenciaExterna,
+    p_mp_payment_id: mpPaymentId,
+    p_mp_orden_id: mpOrdenId,
+  });
+  if (error) throw error;
+}
+
+// QR estático (docs/backlog/08-mercadopago.md#E8-2): con una sola caja física solo puede haber
+// una orden de Mercado Pago vigente a la vez -- esto chequea si ya hay una antes de generar otra
+// (excluyendo la propia venta: confirmar_venta ya insertó su venta_medios_pago 'pendiente' antes
+// de que se llegue a este chequeo).
+export async function hayPagoMercadoPagoPendiente(
+  supabase: SupabaseClient<Database>,
+  ventaId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("hay_pago_mp_pendiente", {
+    p_excluir_venta_id: ventaId,
+  });
+  if (error) throw error;
+  return data as unknown as boolean;
+}
+
+export interface ResultadoCancelarVentaPendiente {
+  mp_orden_id: string | null;
+}
+
+// Cancela una venta pendiente_pago que el cajero abandonó (el cliente no llegó a pagar) --
+// libera la caja para la próxima venta. No requiere admin: a diferencia de anularVenta, acá no
+// hay stock ni dinero que revertir.
+export async function cancelarVentaPendiente(
+  supabase: SupabaseClient<Database>,
+  ventaId: string,
+): Promise<ResultadoCancelarVentaPendiente> {
+  const { data, error } = await supabase.rpc("cancelar_venta_pendiente", {
+    p_venta_id: ventaId,
+  });
+  if (error) throw error;
+  return data as unknown as ResultadoCancelarVentaPendiente;
+}
+
+export interface ResultadoProcesarPagoMP {
+  ya_procesado?: boolean;
+  acreditado?: boolean;
+  venta_completada?: boolean;
+  venta_id: string;
+  numero_comprobante?: number;
+}
+
+// E8-3: la llama únicamente el webhook con el cliente admin (service_role) -- la función en sí
+// revoca el permiso a `authenticated`, así que esto nunca funcionaría con la sesión de un
+// usuario logueado, ni siquiera un administrador.
+export async function procesarResultadoPagoMP(
+  supabase: SupabaseClient<Database>,
+  mpReferenciaExterna: string,
+  mpPaymentId: string,
+  acreditado: boolean,
+): Promise<ResultadoProcesarPagoMP> {
+  const { data, error } = await supabase.rpc("procesar_resultado_pago_mp", {
+    p_mp_referencia_externa: mpReferenciaExterna,
+    p_mp_payment_id: mpPaymentId,
+    p_acreditado: acreditado,
+  });
+  if (error) throw error;
+  return data as unknown as ResultadoProcesarPagoMP;
+}
+
+// E13-1: usado por la vista previa de "efectivo esperado" en /pos/caja/cierre
+// (features/caja/services/arqueoService.ts) -- mismo cálculo que hace cerrar_turno
+// server-side (SECURITY DEFINER, fuente de verdad real), esto es solo para mostrarle al cajero
+// una estimación antes de confirmar. Solo cuenta ventas `completada`, mismo criterio que la
+// función SQL (ver comentario en 20260808220005_create_cerrar_turno_function.sql).
+export async function sumaVentasEfectivoPorTurno(
+  supabase: SupabaseClient<Database>,
+  cajaTurnoId: string,
+): Promise<number> {
+  const { data: ventas, error: ventasError } = await supabase
+    .from("ventas")
+    .select("id")
+    .eq("caja_turno_id", cajaTurnoId)
+    .eq("estado", "completada");
+  if (ventasError) throw ventasError;
+  if (ventas.length === 0) return 0;
+
+  const { data: medios, error: mediosError } = await supabase
+    .from("venta_medios_pago")
+    .select("monto")
+    .in(
+      "venta_id",
+      ventas.map((v) => v.id),
+    )
+    .eq("medio_pago", "efectivo");
+  if (mediosError) throw mediosError;
+
+  return medios.reduce((acc, m) => acc + Number(m.monto), 0);
+}
+
 // Admin (E7-8): historial completo. Un cajero solo vería lo suyo/turno abierto de todos modos
 // (RLS de ventas_select, docs/backlog/07-punto-de-venta.md#E7-1).
 export async function listVentas(

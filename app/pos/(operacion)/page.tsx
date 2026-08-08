@@ -29,6 +29,12 @@ export default async function PosHome() {
           <Link href="/pos/gastos" className={buttonVariants({ variant: "outline", size: "sm" })}>
             Gastos
           </Link>
+          <Link
+            href="/pos/etiquetas"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Etiquetas
+          </Link>
         </div>
         <LogoutButton />
       </header>

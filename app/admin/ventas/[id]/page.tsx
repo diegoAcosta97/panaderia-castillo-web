@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -62,7 +63,17 @@ export default async function VentaDetallePage({
             {new Date(venta.fecha).toLocaleString("es-AR")} · {venta.estado}
           </p>
         </div>
-        {venta.estado === "completada" && <AnularVentaDialog ventaId={venta.id} />}
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/pos/comprobante/${venta.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm underline"
+          >
+            Ver comprobante
+          </Link>
+          {venta.estado === "completada" && <AnularVentaDialog ventaId={venta.id} />}
+        </div>
       </div>
 
       {venta.estado === "anulada" && (

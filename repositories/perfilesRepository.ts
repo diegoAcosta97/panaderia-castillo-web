@@ -36,11 +36,30 @@ export async function listPerfiles(
   return data;
 }
 
+// E13-1: rol/activo ya no son columnas editables por update directo (revoke a nivel Postgres,
+// ver 20260808220000_fix_perfiles_self_escalation.sql -- un cajero podía auto-promoverse antes
+// de este fix) -- pasan por actualizar_rol_perfil (SECURITY DEFINER, gated por
+// is_administrador()). nombre_completo sigue siendo un update directo normal, protegido por RLS
+// (perfiles_update_own/perfiles_update_admin).
 export async function updatePerfil(
   supabase: SupabaseClient<Database>,
   id: string,
   patch: Partial<Pick<Perfil, "rol" | "activo" | "nombre_completo">>,
 ): Promise<void> {
-  const { error } = await supabase.from("perfiles").update(patch).eq("id", id);
-  if (error) throw error;
+  if (patch.rol !== undefined || patch.activo !== undefined) {
+    const { error } = await supabase.rpc("actualizar_rol_perfil", {
+      p_id: id,
+      p_rol: patch.rol ?? null,
+      p_activo: patch.activo ?? null,
+    });
+    if (error) throw error;
+  }
+
+  if (patch.nombre_completo !== undefined) {
+    const { error } = await supabase
+      .from("perfiles")
+      .update({ nombre_completo: patch.nombre_completo })
+      .eq("id", id);
+    if (error) throw error;
+  }
 }

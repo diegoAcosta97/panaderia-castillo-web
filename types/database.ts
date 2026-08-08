@@ -21,6 +21,11 @@ export type TipoCondicionDescuento = "monto_minimo" | "producto_incluido" | "cat
 export type EstadoVenta = "pendiente_pago" | "completada" | "anulada";
 export type MedioPago = "efectivo" | "mercado_pago";
 export type EstadoPagoMedio = "pendiente" | "acreditado" | "rechazado";
+export type EstadoControlStock =
+  | "en_progreso"
+  | "pendiente_aprobacion"
+  | "aprobado"
+  | "rechazado";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -62,6 +67,8 @@ export interface Database {
           telefono: string | null;
           cuit: string | null;
           updated_at: string;
+          mercadopago_store_id: string | null;
+          mercadopago_external_pos_id: string | null;
         };
         Insert: {
           id?: string;
@@ -70,6 +77,8 @@ export interface Database {
           telefono?: string | null;
           cuit?: string | null;
           updated_at?: string;
+          mercadopago_store_id?: string | null;
+          mercadopago_external_pos_id?: string | null;
         };
         Update: {
           id?: string;
@@ -78,6 +87,8 @@ export interface Database {
           telefono?: string | null;
           cuit?: string | null;
           updated_at?: string;
+          mercadopago_store_id?: string | null;
+          mercadopago_external_pos_id?: string | null;
         };
         Relationships: [];
       };
@@ -177,6 +188,94 @@ export interface Database {
           referencia_id?: string | null;
           usuario_id?: string;
           fecha?: string;
+        };
+        Relationships: [];
+      };
+      etiqueta_lotes: {
+        Row: {
+          id: string;
+          producto_id: string;
+          cantidad: number;
+          fecha_vencimiento: string | null;
+          precio_impreso: number;
+          usuario_id: string;
+          fecha_generacion: string;
+        };
+        Insert: {
+          id?: string;
+          producto_id: string;
+          cantidad: number;
+          fecha_vencimiento?: string | null;
+          precio_impreso: number;
+          usuario_id: string;
+          fecha_generacion?: string;
+        };
+        Update: {
+          id?: string;
+          producto_id?: string;
+          cantidad?: number;
+          fecha_vencimiento?: string | null;
+          precio_impreso?: number;
+          usuario_id?: string;
+          fecha_generacion?: string;
+        };
+        Relationships: [];
+      };
+      controles_stock: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          estado: EstadoControlStock;
+          usuario_aprobador_id: string | null;
+          fecha_inicio: string;
+          fecha_cierre: string | null;
+          fecha_aprobacion: string | null;
+          observaciones: string | null;
+        };
+        Insert: {
+          id?: string;
+          usuario_id: string;
+          estado?: EstadoControlStock;
+          usuario_aprobador_id?: string | null;
+          fecha_inicio?: string;
+          fecha_cierre?: string | null;
+          fecha_aprobacion?: string | null;
+          observaciones?: string | null;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string;
+          estado?: EstadoControlStock;
+          usuario_aprobador_id?: string | null;
+          fecha_inicio?: string;
+          fecha_cierre?: string | null;
+          fecha_aprobacion?: string | null;
+          observaciones?: string | null;
+        };
+        Relationships: [];
+      };
+      control_stock_detalles: {
+        Row: {
+          id: string;
+          control_stock_id: string;
+          producto_id: string;
+          stock_sistema: number;
+          stock_contado: number;
+          diferencia: number;
+        };
+        Insert: {
+          id?: string;
+          control_stock_id: string;
+          producto_id: string;
+          stock_sistema: number;
+          stock_contado: number;
+        };
+        Update: {
+          id?: string;
+          control_stock_id?: string;
+          producto_id?: string;
+          stock_sistema?: number;
+          stock_contado?: number;
         };
         Relationships: [];
       };
@@ -540,6 +639,7 @@ export interface Database {
           estado_pago: EstadoPagoMedio;
           mp_payment_id: string | null;
           mp_referencia_externa: string | null;
+          mp_orden_id: string | null;
           fecha_acreditacion: string | null;
         };
         Insert: {
@@ -550,6 +650,7 @@ export interface Database {
           estado_pago?: EstadoPagoMedio;
           mp_payment_id?: string | null;
           mp_referencia_externa?: string | null;
+          mp_orden_id?: string | null;
           fecha_acreditacion?: string | null;
         };
         Update: {
@@ -560,6 +661,7 @@ export interface Database {
           estado_pago?: EstadoPagoMedio;
           mp_payment_id?: string | null;
           mp_referencia_externa?: string | null;
+          mp_orden_id?: string | null;
           fecha_acreditacion?: string | null;
         };
         Relationships: [];
@@ -584,6 +686,66 @@ export interface Database {
         };
         Returns: undefined;
       };
+      registrar_qr_pago: {
+        Args: {
+          p_venta_medio_pago_id: string;
+          p_mp_referencia_externa: string;
+          p_mp_payment_id: string;
+          p_mp_orden_id: string;
+        };
+        Returns: undefined;
+      };
+      hay_pago_mp_pendiente: {
+        Args: {
+          p_excluir_venta_id: string;
+        };
+        Returns: boolean;
+      };
+      cancelar_venta_pendiente: {
+        Args: {
+          p_venta_id: string;
+        };
+        Returns: Json;
+      };
+      procesar_resultado_pago_mp: {
+        Args: {
+          p_mp_referencia_externa: string;
+          p_mp_payment_id: string;
+          p_acreditado: boolean;
+        };
+        Returns: Json;
+      };
+      generar_lote_etiquetas: {
+        Args: {
+          p_producto_id: string;
+          p_cantidad: number;
+          p_fecha_vencimiento: string | null;
+        };
+        Returns: Json;
+      };
+      aprobar_control_stock: {
+        Args: {
+          p_control_stock_id: string;
+          p_aprobador_id: string;
+        };
+        Returns: undefined;
+      };
+      actualizar_rol_perfil: {
+        Args: {
+          p_id: string;
+          p_rol: RolUsuario | null;
+          p_activo: boolean | null;
+        };
+        Returns: undefined;
+      };
+      cerrar_turno: {
+        Args: {
+          p_turno_id: string;
+          p_monto_cierre_declarado: number;
+          p_observaciones: string | null;
+        };
+        Returns: Database["public"]["Tables"]["caja_turnos"]["Row"];
+      };
     };
     Enums: {
       rol_usuario: RolUsuario;
@@ -596,6 +758,7 @@ export interface Database {
       estado_venta: EstadoVenta;
       medio_pago: MedioPago;
       estado_pago_medio: EstadoPagoMedio;
+      estado_control_stock: EstadoControlStock;
     };
     CompositeTypes: Record<never, never>;
   };
