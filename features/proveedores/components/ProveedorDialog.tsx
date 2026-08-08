@@ -17,7 +17,13 @@ import { crearProveedor, actualizarProveedor } from "@/features/proveedores/acti
 import { getErrorMessage } from "@/lib/errors";
 import type { Proveedor } from "@/repositories/proveedoresRepository";
 
-export function ProveedorDialog({ proveedor }: { proveedor?: Proveedor }) {
+export function ProveedorDialog({
+  proveedor,
+  onSaved,
+}: {
+  proveedor?: Proveedor;
+  onSaved?: () => void;
+}) {
   const esEdicion = !!proveedor;
   const [open, setOpen] = useState(false);
   const [nombre, setNombre] = useState(proveedor?.nombre ?? "");
@@ -53,6 +59,7 @@ export function ProveedorDialog({ proveedor }: { proveedor?: Proveedor }) {
         setDireccion("");
       }
       setOpen(false);
+      onSaved?.();
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo guardar el proveedor"));
     } finally {

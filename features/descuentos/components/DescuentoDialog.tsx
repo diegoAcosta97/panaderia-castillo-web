@@ -50,10 +50,12 @@ export function DescuentoDialog({
   productos,
   categorias,
   descuento,
+  onSaved,
 }: {
   productos: Producto[];
   categorias: Categoria[];
   descuento?: DescuentoConCondiciones;
+  onSaved?: () => void;
 }) {
   const esEdicion = !!descuento;
   const [open, setOpen] = useState(false);
@@ -125,6 +127,7 @@ export function DescuentoDialog({
         setCondiciones([condicionVacia()]);
       }
       setOpen(false);
+      onSaved?.();
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo guardar el descuento"));
     } finally {

@@ -83,3 +83,33 @@ export async function listTurnos(
   if (error) throw error;
   return data;
 }
+
+export interface ListTurnosPaginadoParams {
+  page: number;
+  pageSize: number;
+  desde?: string;
+  hasta?: string;
+  sort?: { column: string; ascending: boolean };
+}
+
+// Listado paginado/ordenado server-side para el DataTable de /admin/caja (mismos filtros que
+// listTurnos, aplicados como builder calls en vez de leer searchParams).
+export async function listTurnosPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, desde, hasta, sort }: ListTurnosPaginadoParams,
+): Promise<{ data: CajaTurno[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("caja_turnos").select("*", { count: "exact" });
+  if (desde) request = request.gte("fecha", desde);
+  if (hasta) request = request.lte("fecha", hasta);
+
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("fecha_apertura", { ascending: false });
+
+  const { data, error, count } = await request.range(from, to);
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0 };
+}

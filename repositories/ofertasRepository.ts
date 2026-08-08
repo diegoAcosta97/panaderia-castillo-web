@@ -38,6 +38,49 @@ export async function listOfertas(
   }));
 }
 
+export interface ListOfertasPaginadoParams {
+  page: number;
+  pageSize: number;
+  sort?: { column: string; ascending: boolean };
+}
+
+// Listado paginado/ordenado server-side para el DataTable de /admin/ofertas. oferta_items se
+// trae aparte (como en listOfertas) pero acotado a los ids de la página actual, no a todas las
+// ofertas.
+export async function listOfertasPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, sort }: ListOfertasPaginadoParams,
+): Promise<{ data: OfertaConItems[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("ofertas").select("*", { count: "exact" });
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("nombre");
+
+  const { data: ofertas, error, count } = await request.range(from, to);
+  if (error) throw error;
+  if (!ofertas || ofertas.length === 0) return { data: [], count: count ?? 0 };
+
+  const { data: items, error: errorItems } = await supabase
+    .from("oferta_items")
+    .select("*")
+    .in(
+      "oferta_id",
+      ofertas.map((o) => o.id),
+    );
+  if (errorItems) throw errorItems;
+
+  return {
+    data: ofertas.map((oferta) => ({
+      ...oferta,
+      items: items.filter((item) => item.oferta_id === oferta.id),
+    })),
+    count: count ?? 0,
+  };
+}
+
 function datosOferta(input: OfertaInput) {
   return {
     nombre: input.nombre,

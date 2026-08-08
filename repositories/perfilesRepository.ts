@@ -36,6 +36,29 @@ export async function listPerfiles(
   return data;
 }
 
+export interface ListPerfilesPaginadoParams {
+  page: number;
+  pageSize: number;
+  sort?: { column: string; ascending: boolean };
+}
+
+export async function listPerfilesPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, sort }: ListPerfilesPaginadoParams,
+): Promise<{ data: Perfil[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("perfiles").select("*", { count: "exact" });
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("created_at");
+
+  const { data, error, count } = await request.range(from, to);
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0 };
+}
+
 // E13-1: rol/activo ya no son columnas editables por update directo (revoke a nivel Postgres,
 // ver 20260808220000_fix_perfiles_self_escalation.sql -- un cajero podía auto-promoverse antes
 // de este fix) -- pasan por actualizar_rol_perfil (SECURITY DEFINER, gated por

@@ -66,3 +66,53 @@ export async function listGastos(
   if (error) throw error;
   return data;
 }
+
+export interface ListGastosPaginadoParams {
+  page: number;
+  pageSize: number;
+  proveedorId?: string;
+  desde?: string;
+  hasta?: string;
+  sort?: { column: string; ascending: boolean };
+}
+
+// Listado paginado/ordenado server-side para el DataTable de /admin/gastos (mismos filtros que
+// listGastos, aplicados como builder calls en vez de leer searchParams).
+export async function listGastosPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, proveedorId, desde, hasta, sort }: ListGastosPaginadoParams,
+): Promise<{ data: Gasto[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("gastos").select("*", { count: "exact" });
+  if (proveedorId) request = request.eq("proveedor_id", proveedorId);
+  if (desde) request = request.gte("fecha", desde);
+  if (hasta) request = request.lte("fecha", `${hasta}T23:59:59`);
+
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("fecha", { ascending: false });
+
+  const { data, error, count } = await request.range(from, to);
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0 };
+}
+
+// Total de gastos que matchean los filtros vigentes, sin paginar -- usado para el resumen "Total:
+// $X (N gastos)" debajo de la tabla, que debe reflejar todo el conjunto filtrado y no solo la
+// página visible. Solo trae la columna monto (no todo el registro) para mantenerlo liviano.
+export async function sumaGastosFiltrados(
+  supabase: SupabaseClient<Database>,
+  filtros?: { proveedorId?: string; desde?: string; hasta?: string },
+): Promise<number> {
+  let query = supabase.from("gastos").select("monto");
+
+  if (filtros?.proveedorId) query = query.eq("proveedor_id", filtros.proveedorId);
+  if (filtros?.desde) query = query.gte("fecha", filtros.desde);
+  if (filtros?.hasta) query = query.lte("fecha", `${filtros.hasta}T23:59:59`);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data.reduce((acc, g) => acc + Number(g.monto), 0);
+}

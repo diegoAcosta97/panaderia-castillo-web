@@ -36,9 +36,11 @@ const PALABRA_PANADERIA = /panader/i;
 export function ProductoDialog({
   categorias,
   producto,
+  onSaved,
 }: {
   categorias: Categoria[];
   producto?: Producto;
+  onSaved?: () => void;
 }) {
   const esEdicion = !!producto;
   const [open, setOpen] = useState(false);
@@ -105,6 +107,7 @@ export function ProductoDialog({
         setDiasVencimiento("");
       }
       setOpen(false);
+      onSaved?.();
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo guardar el producto"));
     } finally {

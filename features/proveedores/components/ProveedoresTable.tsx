@@ -1,42 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useMemo, useState, useTransition } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/data-table/DataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ProveedorDialog } from "@/features/proveedores/components/ProveedorDialog";
 import { actualizarProveedor } from "@/features/proveedores/actions";
+import { useProveedoresTable } from "@/features/proveedores/hooks/useProveedoresTable";
 import type { Proveedor } from "@/repositories/proveedoresRepository";
 
-export function ProveedoresTable({ proveedores }: { proveedores: Proveedor[] }) {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Nombre</TableHead>
-          <TableHead>CUIT</TableHead>
-          <TableHead>Teléfono</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Activo</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {proveedores.map((proveedor) => (
-          <ProveedorRow key={proveedor.id} proveedor={proveedor} />
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
-function ProveedorRow({ proveedor }: { proveedor: Proveedor }) {
+function ActivoCell({ proveedor }: { proveedor: Proveedor }) {
   const [isPending, startTransition] = useTransition();
   const [activo, setActivo] = useState(proveedor.activo);
 
@@ -46,20 +19,67 @@ function ProveedorRow({ proveedor }: { proveedor: Proveedor }) {
   }
 
   return (
-    <TableRow className={isPending ? "opacity-60" : undefined}>
-      <TableCell>{proveedor.nombre}</TableCell>
-      <TableCell>{proveedor.cuit || "—"}</TableCell>
-      <TableCell>{proveedor.telefono || "—"}</TableCell>
-      <TableCell>{proveedor.email || "—"}</TableCell>
-      <TableCell>
-        <Checkbox
-          checked={activo}
-          onCheckedChange={(checked) => handleActivoChange(checked === true)}
-        />
-      </TableCell>
-      <TableCell>
-        <ProveedorDialog proveedor={proveedor} />
-      </TableCell>
-    </TableRow>
+    <Checkbox
+      checked={activo}
+      onCheckedChange={(checked) => handleActivoChange(checked === true)}
+      disabled={isPending}
+    />
+  );
+}
+
+export function ProveedoresTable() {
+  const table = useProveedoresTable();
+
+  const columns = useMemo<ColumnDef<Proveedor, unknown>[]>(
+    () => [
+      { accessorKey: "nombre", header: "Nombre" },
+      {
+        accessorKey: "cuit",
+        header: "CUIT",
+        cell: ({ row }) => row.original.cuit || "—",
+      },
+      {
+        accessorKey: "telefono",
+        header: "Teléfono",
+        cell: ({ row }) => row.original.telefono || "—",
+      },
+      {
+        accessorKey: "email",
+        header: "Email",
+        cell: ({ row }) => row.original.email || "—",
+      },
+      {
+        accessorKey: "activo",
+        header: "Activo",
+        cell: ({ row }) => <ActivoCell proveedor={row.original} />,
+      },
+      {
+        id: "acciones",
+        header: "",
+        cell: ({ row }) => <ProveedorDialog proveedor={row.original} onSaved={table.refetch} />,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <ProveedorDialog onSaved={table.refetch} />
+      </div>
+      <DataTable
+        columns={columns}
+        data={table.data}
+        isLoading={table.isLoading}
+        pageIndex={table.pageIndex}
+        pageSize={table.pageSize}
+        totalCount={table.count}
+        onPageChange={table.setPageIndex}
+        sorting={table.sorting}
+        onSortingChange={table.setSorting}
+        emptyMessage="No hay proveedores cargados."
+      />
+    </div>
   );
 }

@@ -1,30 +1,43 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useMemo, useState, useTransition } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/data-table/DataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DescuentoDialog } from "@/features/descuentos/components/DescuentoDialog";
 import { actualizarDescuentoActivo } from "@/features/descuentos/actions";
+import { useDescuentosTable } from "@/features/descuentos/hooks/useDescuentosTable";
 import type { Producto } from "@/repositories/productosRepository";
 import type { Categoria } from "@/repositories/categoriasRepository";
 import type { DescuentoConCondiciones, DescuentoCondicion } from "@/repositories/descuentosRepository";
 
+function ActivoCell({ descuento }: { descuento: DescuentoConCondiciones }) {
+  const [isPending, startTransition] = useTransition();
+  const [activo, setActivo] = useState(descuento.activo);
+
+  function handleActivoChange(nuevoActivo: boolean) {
+    setActivo(nuevoActivo);
+    startTransition(() => actualizarDescuentoActivo(descuento.id, nuevoActivo));
+  }
+
+  return (
+    <Checkbox
+      checked={activo}
+      onCheckedChange={(checked) => handleActivoChange(checked === true)}
+      disabled={isPending}
+    />
+  );
+}
+
 export function DescuentosTable({
-  descuentos,
   productos,
   categorias,
 }: {
-  descuentos: DescuentoConCondiciones[];
   productos: Producto[];
   categorias: Categoria[];
 }) {
+  const table = useDescuentosTable();
+
   function describirCondicion(c: DescuentoCondicion): string {
     if (c.tipo_condicion === "monto_minimo") return `total ≥ $${c.monto_minimo}`;
     if (c.tipo_condicion === "producto_incluido") {
@@ -35,71 +48,65 @@ export function DescuentosTable({
     return `≥ ${c.cantidad_minima ?? 1} de "${nombre}"`;
   }
 
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Nombre</TableHead>
-          <TableHead>Condiciones</TableHead>
-          <TableHead>Efecto</TableHead>
-          <TableHead>Activo</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {descuentos.map((descuento) => (
-          <DescuentoRow
-            key={descuento.id}
-            descuento={descuento}
+  const columns = useMemo<ColumnDef<DescuentoConCondiciones, unknown>[]>(
+    () => [
+      { accessorKey: "nombre", header: "Nombre" },
+      {
+        id: "condiciones",
+        header: "Condiciones",
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.condiciones.map(describirCondicion).join(" Y ")}
+          </span>
+        ),
+      },
+      {
+        id: "efecto",
+        header: "Efecto",
+        cell: ({ row }) =>
+          row.original.tipo_efecto === "porcentaje"
+            ? `${row.original.valor_efecto}%`
+            : `$${row.original.valor_efecto}`,
+      },
+      {
+        accessorKey: "activo",
+        header: "Activo",
+        cell: ({ row }) => <ActivoCell descuento={row.original} />,
+      },
+      {
+        id: "acciones",
+        header: "",
+        cell: ({ row }) => (
+          <DescuentoDialog
             productos={productos}
             categorias={categorias}
-            describirCondicion={describirCondicion}
+            descuento={row.original}
+            onSaved={table.refetch}
           />
-        ))}
-      </TableBody>
-    </Table>
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [productos, categorias],
   );
-}
-
-function DescuentoRow({
-  descuento,
-  productos,
-  categorias,
-  describirCondicion,
-}: {
-  descuento: DescuentoConCondiciones;
-  productos: Producto[];
-  categorias: Categoria[];
-  describirCondicion: (c: DescuentoCondicion) => string;
-}) {
-  const [isPending, startTransition] = useTransition();
-  const [activo, setActivo] = useState(descuento.activo);
-
-  function handleActivoChange(nuevoActivo: boolean) {
-    setActivo(nuevoActivo);
-    startTransition(() => actualizarDescuentoActivo(descuento.id, nuevoActivo));
-  }
 
   return (
-    <TableRow className={isPending ? "opacity-60" : undefined}>
-      <TableCell>{descuento.nombre}</TableCell>
-      <TableCell className="text-sm text-muted-foreground">
-        {descuento.condiciones.map(describirCondicion).join(" Y ")}
-      </TableCell>
-      <TableCell>
-        {descuento.tipo_efecto === "porcentaje"
-          ? `${descuento.valor_efecto}%`
-          : `$${descuento.valor_efecto}`}
-      </TableCell>
-      <TableCell>
-        <Checkbox
-          checked={activo}
-          onCheckedChange={(checked) => handleActivoChange(checked === true)}
-        />
-      </TableCell>
-      <TableCell>
-        <DescuentoDialog productos={productos} categorias={categorias} descuento={descuento} />
-      </TableCell>
-    </TableRow>
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <DescuentoDialog productos={productos} categorias={categorias} onSaved={table.refetch} />
+      </div>
+      <DataTable
+        columns={columns}
+        data={table.data}
+        isLoading={table.isLoading}
+        pageIndex={table.pageIndex}
+        pageSize={table.pageSize}
+        totalCount={table.count}
+        onPageChange={table.setPageIndex}
+        sorting={table.sorting}
+        onSortingChange={table.setSorting}
+        emptyMessage="No hay descuentos cargados."
+      />
+    </div>
   );
 }

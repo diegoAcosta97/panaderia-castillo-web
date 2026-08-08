@@ -26,6 +26,31 @@ export async function listProductos(
   return data;
 }
 
+export interface ListProductosPaginadoParams {
+  page: number;
+  pageSize: number;
+  sort?: { column: string; ascending: boolean };
+}
+
+// Listado paginado/ordenado server-side para el DataTable de /admin/productos (mismo patrón que
+// listBooksAdmin en biblioteca-liliana-bodoc-web).
+export async function listProductosPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, sort }: ListProductosPaginadoParams,
+): Promise<{ data: Producto[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("productos").select("*", { count: "exact" });
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("nombre");
+
+  const { data, error, count } = await request.range(from, to);
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0 };
+}
+
 // RF-1.4: "por debajo del mínimo" se calcula en el cliente (comparar dos columnas de la misma
 // fila no es un filtro que PostgREST resuelva con un valor literal) — a este volumen de
 // catálogo no hace falta una vista/función solo para esto.

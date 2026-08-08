@@ -1,17 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useMemo, useState, useTransition } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/data-table/DataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OfertaDialog } from "@/features/ofertas/components/OfertaDialog";
 import { actualizarOfertaActivo } from "@/features/ofertas/actions";
+import { useOfertasTable } from "@/features/ofertas/hooks/useOfertasTable";
 import type { Producto } from "@/repositories/productosRepository";
 import type { OfertaConItems } from "@/repositories/ofertasRepository";
 
@@ -21,51 +16,7 @@ const ETIQUETA_BENEFICIO = {
   descuento_monto: "Monto fijo",
 };
 
-export function OfertasTable({
-  ofertas,
-  productos,
-}: {
-  ofertas: OfertaConItems[];
-  productos: Producto[];
-}) {
-  const nombreProducto = (id: string) => productos.find((p) => p.id === id)?.nombre ?? "—";
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Nombre</TableHead>
-          <TableHead>Combo</TableHead>
-          <TableHead>Beneficio</TableHead>
-          <TableHead>Valor</TableHead>
-          <TableHead>Máx./venta</TableHead>
-          <TableHead>Activa</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {ofertas.map((oferta) => (
-          <OfertaRow
-            key={oferta.id}
-            oferta={oferta}
-            productos={productos}
-            nombreProducto={nombreProducto}
-          />
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
-function OfertaRow({
-  oferta,
-  productos,
-  nombreProducto,
-}: {
-  oferta: OfertaConItems;
-  productos: Producto[];
-  nombreProducto: (id: string) => string;
-}) {
+function ActivaCell({ oferta }: { oferta: OfertaConItems }) {
   const [isPending, startTransition] = useTransition();
   const [activo, setActivo] = useState(oferta.activo);
 
@@ -75,23 +26,77 @@ function OfertaRow({
   }
 
   return (
-    <TableRow className={isPending ? "opacity-60" : undefined}>
-      <TableCell>{oferta.nombre}</TableCell>
-      <TableCell className="text-sm text-muted-foreground">
-        {oferta.items.map((i) => `${i.cantidad_requerida} ${nombreProducto(i.producto_id)}`).join(" + ")}
-      </TableCell>
-      <TableCell>{ETIQUETA_BENEFICIO[oferta.tipo_beneficio]}</TableCell>
-      <TableCell>{oferta.valor_beneficio}</TableCell>
-      <TableCell>{oferta.max_aplicaciones_por_venta ?? "sin límite"}</TableCell>
-      <TableCell>
-        <Checkbox
-          checked={activo}
-          onCheckedChange={(checked) => handleActivoChange(checked === true)}
-        />
-      </TableCell>
-      <TableCell>
-        <OfertaDialog productos={productos} oferta={oferta} />
-      </TableCell>
-    </TableRow>
+    <Checkbox
+      checked={activo}
+      onCheckedChange={(checked) => handleActivoChange(checked === true)}
+      disabled={isPending}
+    />
+  );
+}
+
+export function OfertasTable({ productos }: { productos: Producto[] }) {
+  const table = useOfertasTable();
+  const nombreProducto = (id: string) => productos.find((p) => p.id === id)?.nombre ?? "—";
+
+  const columns = useMemo<ColumnDef<OfertaConItems, unknown>[]>(
+    () => [
+      { accessorKey: "nombre", header: "Nombre" },
+      {
+        id: "combo",
+        header: "Combo",
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.items
+              .map((i) => `${i.cantidad_requerida} ${nombreProducto(i.producto_id)}`)
+              .join(" + ")}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "tipo_beneficio",
+        header: "Beneficio",
+        cell: ({ row }) => ETIQUETA_BENEFICIO[row.original.tipo_beneficio],
+      },
+      { accessorKey: "valor_beneficio", header: "Valor" },
+      {
+        accessorKey: "max_aplicaciones_por_venta",
+        header: "Máx./venta",
+        cell: ({ row }) => row.original.max_aplicaciones_por_venta ?? "sin límite",
+      },
+      {
+        accessorKey: "activo",
+        header: "Activa",
+        cell: ({ row }) => <ActivaCell oferta={row.original} />,
+      },
+      {
+        id: "acciones",
+        header: "",
+        cell: ({ row }) => (
+          <OfertaDialog productos={productos} oferta={row.original} onSaved={table.refetch} />
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [productos],
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <OfertaDialog productos={productos} onSaved={table.refetch} />
+      </div>
+      <DataTable
+        columns={columns}
+        data={table.data}
+        isLoading={table.isLoading}
+        pageIndex={table.pageIndex}
+        pageSize={table.pageSize}
+        totalCount={table.count}
+        onPageChange={table.setPageIndex}
+        sorting={table.sorting}
+        onSortingChange={table.setSorting}
+        emptyMessage="No hay ofertas cargadas."
+      />
+    </div>
   );
 }

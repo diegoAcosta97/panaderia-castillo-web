@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { crearCategoria } from "@/features/productos/actions";
 import { getErrorMessage } from "@/lib/errors";
 
-export function NuevaCategoriaDialog() {
+export function NuevaCategoriaDialog({ onSaved }: { onSaved?: () => void } = {}) {
   const [open, setOpen] = useState(false);
   const [nombre, setNombre] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +31,7 @@ export function NuevaCategoriaDialog() {
       await crearCategoria(nombre);
       setOpen(false);
       setNombre("");
+      onSaved?.();
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo crear la categoría"));
     } finally {

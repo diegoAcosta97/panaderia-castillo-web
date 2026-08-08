@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button";
+import { ControlesStockTable } from "@/features/control-stock/components/ControlesStockTable";
 
 const ETIQUETA_ESTADO: Record<string, string> = {
   en_progreso: "En progreso",
@@ -58,32 +59,7 @@ export default async function ControlStockHistorialPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">Controles</h2>
-        {controles.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Todavía no se registró ningún control.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha inicio</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {controles.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>{new Date(c.fecha_inicio).toLocaleString("es-AR")}</TableCell>
-                  <TableCell>{ETIQUETA_ESTADO[c.estado] ?? c.estado}</TableCell>
-                  <TableCell>
-                    <Link href={`/admin/control-stock/${c.id}`} className="text-sm underline">
-                      Ver
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <ControlesStockTable />
       </section>
 
       <section className="flex flex-col gap-3">

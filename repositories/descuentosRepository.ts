@@ -43,6 +43,48 @@ export async function listDescuentos(
   }));
 }
 
+export interface ListDescuentosPaginadoParams {
+  page: number;
+  pageSize: number;
+  sort?: { column: string; ascending: boolean };
+}
+
+// Listado paginado/ordenado server-side para el DataTable de /admin/descuentos.
+// descuento_condiciones se trae aparte, acotado a los ids de la página actual.
+export async function listDescuentosPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, sort }: ListDescuentosPaginadoParams,
+): Promise<{ data: DescuentoConCondiciones[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("descuentos").select("*", { count: "exact" });
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("nombre");
+
+  const { data: descuentos, error, count } = await request.range(from, to);
+  if (error) throw error;
+  if (!descuentos || descuentos.length === 0) return { data: [], count: count ?? 0 };
+
+  const { data: condiciones, error: errorCondiciones } = await supabase
+    .from("descuento_condiciones")
+    .select("*")
+    .in(
+      "descuento_id",
+      descuentos.map((d) => d.id),
+    );
+  if (errorCondiciones) throw errorCondiciones;
+
+  return {
+    data: descuentos.map((descuento) => ({
+      ...descuento,
+      condiciones: condiciones.filter((c) => c.descuento_id === descuento.id),
+    })),
+    count: count ?? 0,
+  };
+}
+
 function datosDescuento(input: DescuentoInput) {
   return {
     nombre: input.nombre,

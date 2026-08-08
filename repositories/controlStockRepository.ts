@@ -95,6 +95,30 @@ export async function listControlesStock(
   return data;
 }
 
+export interface ListControlesStockPaginadoParams {
+  page: number;
+  pageSize: number;
+  sort?: { column: string; ascending: boolean };
+}
+
+// Listado paginado/ordenado server-side para el DataTable de /admin/control-stock.
+export async function listControlesStockPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, sort }: ListControlesStockPaginadoParams,
+): Promise<{ data: ControlStock[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("controles_stock").select("*", { count: "exact" });
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("fecha_inicio", { ascending: false });
+
+  const { data, error, count } = await request.range(from, to);
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0 };
+}
+
 // E11-5: todos los detalles con diferencia != 0 de todos los controles -- usado para armar el
 // historial de diferencias recurrentes por producto en el listado.
 export async function listDetallesConDiferencia(

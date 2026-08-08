@@ -254,3 +254,35 @@ export async function listVentas(
   if (error) throw error;
   return data;
 }
+
+export interface ListVentasPaginadoParams {
+  page: number;
+  pageSize: number;
+  cajaTurnoId?: string;
+  desde?: string;
+  hasta?: string;
+  sort?: { column: string; ascending: boolean };
+}
+
+// Listado paginado/ordenado server-side para el DataTable de /admin/ventas (mismos filtros que
+// listVentas, aplicados como builder calls en vez de leer searchParams).
+export async function listVentasPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, cajaTurnoId, desde, hasta, sort }: ListVentasPaginadoParams,
+): Promise<{ data: Venta[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("ventas").select("*", { count: "exact" });
+  if (cajaTurnoId) request = request.eq("caja_turno_id", cajaTurnoId);
+  if (desde) request = request.gte("fecha", desde);
+  if (hasta) request = request.lte("fecha", `${hasta}T23:59:59`);
+
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("fecha", { ascending: false });
+
+  const { data, error, count } = await request.range(from, to);
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0 };
+}

@@ -11,6 +11,29 @@ export async function listProveedores(
   return data;
 }
 
+export interface ListProveedoresPaginadoParams {
+  page: number;
+  pageSize: number;
+  sort?: { column: string; ascending: boolean };
+}
+
+export async function listProveedoresPaginated(
+  supabase: SupabaseClient<Database>,
+  { page, pageSize, sort }: ListProveedoresPaginadoParams,
+): Promise<{ data: Proveedor[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  let request = supabase.from("proveedores").select("*", { count: "exact" });
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("nombre");
+
+  const { data, error, count } = await request.range(from, to);
+  if (error) throw error;
+  return { data: data ?? [], count: count ?? 0 };
+}
+
 export interface NuevoProveedor {
   nombre: string;
   cuit?: string | null;

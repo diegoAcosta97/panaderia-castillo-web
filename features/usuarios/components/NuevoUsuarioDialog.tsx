@@ -25,7 +25,7 @@ import { crearUsuario } from "@/features/usuarios/actions";
 import { getErrorMessage } from "@/lib/errors";
 import type { RolUsuario } from "@/types/database";
 
-export function NuevoUsuarioDialog() {
+export function NuevoUsuarioDialog({ onSaved }: { onSaved?: () => void } = {}) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,6 +46,7 @@ export function NuevoUsuarioDialog() {
       setPassword("");
       setNombreCompleto("");
       setRol("cajero");
+      onSaved?.();
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo crear el usuario"));
     } finally {

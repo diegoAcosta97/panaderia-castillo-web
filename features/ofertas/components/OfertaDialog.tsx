@@ -46,9 +46,11 @@ const ETIQUETA_BENEFICIO: Record<TipoBeneficioOferta, string> = {
 export function OfertaDialog({
   productos,
   oferta,
+  onSaved,
 }: {
   productos: Producto[];
   oferta?: OfertaConItems;
+  onSaved?: () => void;
 }) {
   const esEdicion = !!oferta;
   const [open, setOpen] = useState(false);
@@ -117,6 +119,7 @@ export function OfertaDialog({
         setItems(ITEMS_VACIOS);
       }
       setOpen(false);
+      onSaved?.();
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo guardar la oferta"));
     } finally {
