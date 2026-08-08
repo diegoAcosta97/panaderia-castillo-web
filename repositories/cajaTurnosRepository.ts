@@ -45,39 +45,23 @@ export async function abrirTurno(
   return data;
 }
 
+// E13-1: cierra vía cerrar_turno (SECURITY DEFINER) -- calcula efectivo_esperado server-side a
+// partir de las ventas/gastos reales del turno, nunca confía en un valor mandado por el
+// cliente (antes era un update directo con with check(true), forjable por API). Ver
+// 20260808220005_create_cerrar_turno_function.sql.
 export async function cerrarTurno(
   supabase: SupabaseClient<Database>,
   id: string,
   montoCierreDeclarado: number,
-  efectivoEsperado: number,
   observaciones: string | null,
 ): Promise<CajaTurno> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("No hay sesión.");
-
-  const { data, error } = await supabase
-    .from("caja_turnos")
-    .update({
-      usuario_cierre_id: user.id,
-      monto_cierre_declarado: montoCierreDeclarado,
-      efectivo_esperado: efectivoEsperado,
-      diferencia: montoCierreDeclarado - efectivoEsperado,
-      fecha_cierre: new Date().toISOString(),
-      estado: "cerrada",
-      observaciones,
-    })
-    .eq("id", id)
-    .eq("estado", "abierta")
-    .select("*")
-    .maybeSingle();
-
+  const { data, error } = await supabase.rpc("cerrar_turno", {
+    p_turno_id: id,
+    p_monto_cierre_declarado: montoCierreDeclarado,
+    p_observaciones: observaciones,
+  });
   if (error) throw error;
-  if (!data) {
-    throw new Error("Este turno ya no está abierto (puede que ya lo hayan cerrado).");
-  }
-  return data;
+  return data as unknown as CajaTurno;
 }
 
 // Admin-only por RLS (docs/backlog/04-caja.md#E4-4) — un cajero solo ve el turno abierto y los

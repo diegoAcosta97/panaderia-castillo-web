@@ -208,6 +208,36 @@ export async function procesarResultadoPagoMP(
   return data as unknown as ResultadoProcesarPagoMP;
 }
 
+// E13-1: usado por la vista previa de "efectivo esperado" en /pos/caja/cierre
+// (features/caja/services/arqueoService.ts) -- mismo cálculo que hace cerrar_turno
+// server-side (SECURITY DEFINER, fuente de verdad real), esto es solo para mostrarle al cajero
+// una estimación antes de confirmar. Solo cuenta ventas `completada`, mismo criterio que la
+// función SQL (ver comentario en 20260808220005_create_cerrar_turno_function.sql).
+export async function sumaVentasEfectivoPorTurno(
+  supabase: SupabaseClient<Database>,
+  cajaTurnoId: string,
+): Promise<number> {
+  const { data: ventas, error: ventasError } = await supabase
+    .from("ventas")
+    .select("id")
+    .eq("caja_turno_id", cajaTurnoId)
+    .eq("estado", "completada");
+  if (ventasError) throw ventasError;
+  if (ventas.length === 0) return 0;
+
+  const { data: medios, error: mediosError } = await supabase
+    .from("venta_medios_pago")
+    .select("monto")
+    .in(
+      "venta_id",
+      ventas.map((v) => v.id),
+    )
+    .eq("medio_pago", "efectivo");
+  if (mediosError) throw mediosError;
+
+  return medios.reduce((acc, m) => acc + Number(m.monto), 0);
+}
+
 // Admin (E7-8): historial completo. Un cajero solo vería lo suyo/turno abierto de todos modos
 // (RLS de ventas_select, docs/backlog/07-punto-de-venta.md#E7-1).
 export async function listVentas(

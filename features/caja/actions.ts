@@ -6,10 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   abrirTurno as abrirTurnoRepo,
   cerrarTurno as cerrarTurnoRepo,
-  getTurnoAbierto,
   type CajaTurno,
 } from "@/repositories/cajaTurnosRepository";
-import { calcularEfectivoEsperado } from "@/features/caja/services/arqueoService";
 
 async function requireSession() {
   const session = await getServerSession();
@@ -35,19 +33,7 @@ export async function cerrarTurno(
   await requireSession();
   const supabase = await createClient();
 
-  const turno = await getTurnoAbierto(supabase);
-  if (!turno || turno.id !== id) {
-    throw new Error("Este turno ya no está abierto.");
-  }
-
-  const efectivoEsperado = await calcularEfectivoEsperado(supabase, turno);
-  const cerrado = await cerrarTurnoRepo(
-    supabase,
-    id,
-    montoCierreDeclarado,
-    efectivoEsperado,
-    observaciones || null,
-  );
+  const cerrado = await cerrarTurnoRepo(supabase, id, montoCierreDeclarado, observaciones || null);
 
   revalidatePath("/pos/caja");
   revalidatePath("/admin/caja");

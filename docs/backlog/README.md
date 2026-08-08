@@ -16,8 +16,8 @@ Documentos de referencia (leer antes de las tareas):
 
 ## Estado
 
-Backlog recién definido — ninguna tarea implementada todavía. Este documento es el punto de
-partida del desarrollo.
+Las 14 epics (0 a 13) están implementadas y verificadas contra el proyecto de Supabase real y un
+navegador real — ver el detalle y las notas de verificación en cada archivo de epic.
 
 ## Índice de EPICs
 

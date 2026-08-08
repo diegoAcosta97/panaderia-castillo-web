@@ -730,6 +730,22 @@ export interface Database {
         };
         Returns: undefined;
       };
+      actualizar_rol_perfil: {
+        Args: {
+          p_id: string;
+          p_rol: RolUsuario | null;
+          p_activo: boolean | null;
+        };
+        Returns: undefined;
+      };
+      cerrar_turno: {
+        Args: {
+          p_turno_id: string;
+          p_monto_cierre_declarado: number;
+          p_observaciones: string | null;
+        };
+        Returns: Database["public"]["Tables"]["caja_turnos"]["Row"];
+      };
     };
     Enums: {
       rol_usuario: RolUsuario;
