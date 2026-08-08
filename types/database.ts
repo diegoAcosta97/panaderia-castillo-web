@@ -186,6 +186,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      etiqueta_lotes: {
+        Row: {
+          id: string;
+          producto_id: string;
+          cantidad: number;
+          fecha_vencimiento: string | null;
+          precio_impreso: number;
+          usuario_id: string;
+          fecha_generacion: string;
+        };
+        Insert: {
+          id?: string;
+          producto_id: string;
+          cantidad: number;
+          fecha_vencimiento?: string | null;
+          precio_impreso: number;
+          usuario_id: string;
+          fecha_generacion?: string;
+        };
+        Update: {
+          id?: string;
+          producto_id?: string;
+          cantidad?: number;
+          fecha_vencimiento?: string | null;
+          precio_impreso?: number;
+          usuario_id?: string;
+          fecha_generacion?: string;
+        };
+        Relationships: [];
+      };
       caja_turnos: {
         Row: {
           id: string;
@@ -619,6 +649,14 @@ export interface Database {
           p_mp_referencia_externa: string;
           p_mp_payment_id: string;
           p_acreditado: boolean;
+        };
+        Returns: Json;
+      };
+      generar_lote_etiquetas: {
+        Args: {
+          p_producto_id: string;
+          p_cantidad: number;
+          p_fecha_vencimiento: string | null;
         };
         Returns: Json;
       };
