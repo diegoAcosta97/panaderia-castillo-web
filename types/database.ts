@@ -21,6 +21,11 @@ export type TipoCondicionDescuento = "monto_minimo" | "producto_incluido" | "cat
 export type EstadoVenta = "pendiente_pago" | "completada" | "anulada";
 export type MedioPago = "efectivo" | "mercado_pago";
 export type EstadoPagoMedio = "pendiente" | "acreditado" | "rechazado";
+export type EstadoControlStock =
+  | "en_progreso"
+  | "pendiente_aprobacion"
+  | "aprobado"
+  | "rechazado";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -213,6 +218,64 @@ export interface Database {
           precio_impreso?: number;
           usuario_id?: string;
           fecha_generacion?: string;
+        };
+        Relationships: [];
+      };
+      controles_stock: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          estado: EstadoControlStock;
+          usuario_aprobador_id: string | null;
+          fecha_inicio: string;
+          fecha_cierre: string | null;
+          fecha_aprobacion: string | null;
+          observaciones: string | null;
+        };
+        Insert: {
+          id?: string;
+          usuario_id: string;
+          estado?: EstadoControlStock;
+          usuario_aprobador_id?: string | null;
+          fecha_inicio?: string;
+          fecha_cierre?: string | null;
+          fecha_aprobacion?: string | null;
+          observaciones?: string | null;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string;
+          estado?: EstadoControlStock;
+          usuario_aprobador_id?: string | null;
+          fecha_inicio?: string;
+          fecha_cierre?: string | null;
+          fecha_aprobacion?: string | null;
+          observaciones?: string | null;
+        };
+        Relationships: [];
+      };
+      control_stock_detalles: {
+        Row: {
+          id: string;
+          control_stock_id: string;
+          producto_id: string;
+          stock_sistema: number;
+          stock_contado: number;
+          diferencia: number;
+        };
+        Insert: {
+          id?: string;
+          control_stock_id: string;
+          producto_id: string;
+          stock_sistema: number;
+          stock_contado: number;
+        };
+        Update: {
+          id?: string;
+          control_stock_id?: string;
+          producto_id?: string;
+          stock_sistema?: number;
+          stock_contado?: number;
         };
         Relationships: [];
       };
@@ -660,6 +723,13 @@ export interface Database {
         };
         Returns: Json;
       };
+      aprobar_control_stock: {
+        Args: {
+          p_control_stock_id: string;
+          p_aprobador_id: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       rol_usuario: RolUsuario;
@@ -672,6 +742,7 @@ export interface Database {
       estado_venta: EstadoVenta;
       medio_pago: MedioPago;
       estado_pago_medio: EstadoPagoMedio;
+      estado_control_stock: EstadoControlStock;
     };
     CompositeTypes: Record<never, never>;
   };
