@@ -3,12 +3,24 @@ import type { Database } from "@/types/database";
 
 export type ConfiguracionNegocio = Database["public"]["Tables"]["configuracion_negocio"]["Row"];
 
-// Solo lectura por ahora -- la pantalla de edición es docs/backlog/12-configuracion.md#E12-1,
-// que todavía no se construyó. E8-2 la necesita ya para leer mercadopago_external_pos_id.
 export async function getConfiguracionNegocio(
   supabase: SupabaseClient<Database>,
 ): Promise<ConfiguracionNegocio> {
   const { data, error } = await supabase.from("configuracion_negocio").select("*").single();
   if (error) throw error;
   return data;
+}
+
+// E12-1: escritura -- solo administrador (policy configuracion_negocio_update_admin, ver
+// 20260808150000_configuracion_negocio_update_admin.sql).
+export async function actualizarConfiguracionNegocio(
+  supabase: SupabaseClient<Database>,
+  id: string,
+  patch: Partial<Pick<ConfiguracionNegocio, "nombre_comercial" | "direccion" | "telefono" | "cuit">>,
+): Promise<void> {
+  const { error } = await supabase
+    .from("configuracion_negocio")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
 }

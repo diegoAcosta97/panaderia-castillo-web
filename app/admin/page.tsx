@@ -41,6 +41,9 @@ export default async function AdminHome() {
         <Link href="/admin/ventas" className={buttonVariants({ variant: "outline" })}>
           Ventas
         </Link>
+        <Link href="/admin/configuracion" className={buttonVariants({ variant: "outline" })}>
+          Configuración
+        </Link>
       </div>
       <LogoutButton />
     </div>
