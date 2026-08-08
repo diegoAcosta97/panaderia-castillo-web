@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,7 +53,10 @@ export function PesoDialog({
             />
           </div>
           <DialogFooter>
-            <Button type="submit">Agregar</Button>
+            <Button type="submit">
+              <Plus className="size-4" />
+              Agregar
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

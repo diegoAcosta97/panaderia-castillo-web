@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Filter } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { listVentas } from "@/repositories/ventasRepository";
 import { listTurnos } from "@/repositories/cajaTurnosRepository";
@@ -63,6 +64,7 @@ export default async function VentasHistorialPage({
           <Input id="hasta" type="date" name="hasta" defaultValue={hasta} />
         </div>
         <Button type="submit" variant="outline">
+          <Filter className="size-4" />
           Filtrar
         </Button>
       </form>

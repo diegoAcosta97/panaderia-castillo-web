@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { cancelarPagoMPPendiente } from "@/features/mercadopago/actions";
@@ -77,6 +78,7 @@ export function EsperandoPagoMP({
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="button" variant="outline" onClick={handleCancelar} disabled={cancelando}>
+        <X className="size-4" />
         {cancelando ? "Cancelando..." : "Cancelar cobro"}
       </Button>
     </div>

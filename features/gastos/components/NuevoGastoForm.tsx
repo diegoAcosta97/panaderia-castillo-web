@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +82,7 @@ export function NuevoGastoForm({ proveedores }: { proveedores: Proveedor[] }) {
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" disabled={isLoading || !proveedorId}>
+        <Receipt className="size-4" />
         {isLoading ? "Guardando..." : "Registrar gasto"}
       </Button>
     </form>

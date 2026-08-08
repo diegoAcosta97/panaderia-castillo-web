@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,14 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Image
+        src="/logo-castillo-gemini.png"
+        alt="Panadería Castillo"
+        width={1200}
+        height={675}
+        priority
+        className="mx-auto h-auto w-full max-w-[280px]"
+      />
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Panadería Castillo</CardTitle>

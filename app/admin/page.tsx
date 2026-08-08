@@ -1,54 +1,20 @@
-import Link from "next/link";
+import { ChefHat } from "lucide-react";
 import { getServerSession } from "@/features/auth/services/sessionService";
-import { LogoutButton } from "@/features/auth/components/LogoutButton";
-import { buttonVariants } from "@/components/ui/button";
 
-// Placeholder: el panel de administración real (productos, ofertas, caja, etc.) se arma a
-// partir de EPIC 3 en adelante — esto solo prueba que el guard de /admin (E2-2) funciona.
 export default async function AdminHome() {
   const session = await getServerSession();
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+      <ChefHat className="size-10 text-primary" />
       <div>
-        <p className="text-lg font-medium">Panel de administración</p>
-        <p className="text-muted-foreground text-sm">
-          {session?.perfil.nombre_completo || session?.perfil.email} · {session?.rol}
+        <p className="text-lg font-medium">
+          Hola, {session?.perfil.nombre_completo || session?.perfil.email}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Elegí una sección del menú para empezar.
         </p>
       </div>
-      <div className="flex gap-2">
-        <Link href="/admin/productos" className={buttonVariants({ variant: "outline" })}>
-          Productos
-        </Link>
-        <Link href="/admin/usuarios" className={buttonVariants({ variant: "outline" })}>
-          Usuarios
-        </Link>
-        <Link href="/admin/caja" className={buttonVariants({ variant: "outline" })}>
-          Caja
-        </Link>
-        <Link href="/admin/proveedores" className={buttonVariants({ variant: "outline" })}>
-          Proveedores
-        </Link>
-        <Link href="/admin/gastos" className={buttonVariants({ variant: "outline" })}>
-          Gastos
-        </Link>
-        <Link href="/admin/ofertas" className={buttonVariants({ variant: "outline" })}>
-          Ofertas
-        </Link>
-        <Link href="/admin/descuentos" className={buttonVariants({ variant: "outline" })}>
-          Descuentos
-        </Link>
-        <Link href="/admin/ventas" className={buttonVariants({ variant: "outline" })}>
-          Ventas
-        </Link>
-        <Link href="/admin/control-stock" className={buttonVariants({ variant: "outline" })}>
-          Control de stock
-        </Link>
-        <Link href="/admin/configuracion" className={buttonVariants({ variant: "outline" })}>
-          Configuración
-        </Link>
-      </div>
-      <LogoutButton />
     </div>
   );
 }

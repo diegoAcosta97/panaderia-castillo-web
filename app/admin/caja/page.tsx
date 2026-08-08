@@ -1,3 +1,4 @@
+import { Filter } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { listTurnos } from "@/repositories/cajaTurnosRepository";
 import {
@@ -35,6 +36,7 @@ export default async function CajaHistorialPage({
           <Input id="hasta" type="date" name="hasta" defaultValue={hasta} />
         </div>
         <Button type="submit" variant="outline">
+          <Filter className="size-4" />
           Filtrar
         </Button>
       </form>

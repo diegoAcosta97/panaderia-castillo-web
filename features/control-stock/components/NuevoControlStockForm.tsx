@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,6 +131,7 @@ export function NuevoControlStockForm({ productos }: { productos: Producto[] }) 
 
       <div>
         <Button type="submit" disabled={isLoading || faltanValores}>
+          <ClipboardCheck className="size-4" />
           {isLoading ? "Finalizando..." : "Finalizar conteo"}
         </Button>
       </div>

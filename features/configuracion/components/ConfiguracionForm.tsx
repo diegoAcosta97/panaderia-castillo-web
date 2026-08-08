@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +76,7 @@ export function ConfiguracionForm({ configuracion }: { configuracion: Configurac
       {error && <p className="text-sm text-destructive">{error}</p>}
       {guardado && !error && <p className="text-sm text-muted-foreground">Guardado.</p>}
       <Button type="submit" disabled={isLoading || !nombreComercial.trim()}>
+        <Save className="size-4" />
         {isLoading ? "Guardando..." : "Guardar"}
       </Button>
     </form>

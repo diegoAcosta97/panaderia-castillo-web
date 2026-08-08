@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { RotateCcw, Tags } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,7 @@ export function PantallaEtiquetas() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between p-6 pb-0 print:hidden">
           <Button type="button" variant="outline" onClick={() => setLote(null)}>
+            <RotateCcw className="size-4" />
             Generar otro lote
           </Button>
           <BotonImprimir />
@@ -97,6 +99,7 @@ export function PantallaEtiquetas() {
             disabled={isLoading || !cantidad || Number(cantidad) <= 0}
             className="w-fit"
           >
+            <Tags className="size-4" />
             {isLoading ? "Generando..." : "Generar etiquetas"}
           </Button>
         </div>

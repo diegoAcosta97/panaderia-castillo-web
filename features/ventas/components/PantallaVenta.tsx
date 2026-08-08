@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { CircleCheck, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScannerInput } from "@/features/ventas/components/ScannerInput";
 import { PesoDialog } from "@/features/ventas/components/PesoDialog";
@@ -68,8 +69,11 @@ export function PantallaVenta({
   return (
     <div className="flex flex-col gap-4 p-6">
       {ultimaVenta && (
-        <p className="flex items-center justify-between gap-3 rounded-lg border border-green-600/30 bg-green-600/10 p-3 text-sm">
-          <span>Venta confirmada — comprobante N.º {ultimaVenta.numeroComprobante}</span>
+        <p className="flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 p-3 text-sm">
+          <span className="flex items-center gap-2">
+            <CircleCheck className="size-4 text-success" />
+            Venta confirmada — comprobante N.º {ultimaVenta.numeroComprobante}
+          </span>
           <Link
             href={`/pos/comprobante/${ultimaVenta.ventaId}`}
             target="_blank"
@@ -93,6 +97,7 @@ export function PantallaVenta({
         <>
           <ResumenVenta resumen={resumen} />
           <Button type="button" onClick={() => setPaso("cobro")} className="w-fit">
+            <ShoppingCart className="size-4" />
             Cobrar
           </Button>
         </>

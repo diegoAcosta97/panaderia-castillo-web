@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Banknote, QrCode, Split, ArrowLeft, CircleCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,6 +100,7 @@ export function PantallaCobro({
           variant={formaPago === "efectivo" ? "default" : "outline"}
           onClick={() => setFormaPago("efectivo")}
         >
+          <Banknote className="size-4" />
           Efectivo
         </Button>
         <Button
@@ -106,6 +108,7 @@ export function PantallaCobro({
           variant={formaPago === "mercado_pago" ? "default" : "outline"}
           onClick={() => setFormaPago("mercado_pago")}
         >
+          <QrCode className="size-4" />
           Mercado Pago
         </Button>
         <Button
@@ -113,6 +116,7 @@ export function PantallaCobro({
           variant={formaPago === "combinado" ? "default" : "outline"}
           onClick={() => setFormaPago("combinado")}
         >
+          <Split className="size-4" />
           Combinado
         </Button>
       </div>
@@ -146,6 +150,7 @@ export function PantallaCobro({
 
       <div className="flex gap-2">
         <Button type="button" variant="outline" onClick={onCancelar} disabled={isLoading}>
+          <ArrowLeft className="size-4" />
           Volver al carrito
         </Button>
         <Button
@@ -153,6 +158,7 @@ export function PantallaCobro({
           onClick={handleConfirmar}
           disabled={!habilitado || isLoading || generandoQr}
         >
+          <CircleCheck className="size-4" />
           {isLoading || generandoQr
             ? "Confirmando..."
             : `Confirmar venta ($${total.toFixed(2)})`}
