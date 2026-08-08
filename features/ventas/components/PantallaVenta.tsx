@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScannerInput } from "@/features/ventas/components/ScannerInput";
 import { PesoDialog } from "@/features/ventas/components/PesoDialog";
@@ -25,7 +26,10 @@ export function PantallaVenta({
   const { renglones, agregarProducto, actualizarCantidad, quitarRenglon, vaciar } = useCarrito();
   const [productoPesoPendiente, setProductoPesoPendiente] = useState<Producto | null>(null);
   const [paso, setPaso] = useState<"carrito" | "cobro">("carrito");
-  const [ultimoComprobante, setUltimoComprobante] = useState<number | null>(null);
+  const [ultimaVenta, setUltimaVenta] = useState<{
+    ventaId: string;
+    numeroComprobante: number;
+  } | null>(null);
   const resumen = useResumenVenta(renglones, ofertas, descuentos);
 
   function handleSeleccionar(producto: Producto) {
@@ -43,8 +47,8 @@ export function PantallaVenta({
     }
   }
 
-  function handleConfirmada(numeroComprobante: number) {
-    setUltimoComprobante(numeroComprobante);
+  function handleConfirmada(ventaId: string, numeroComprobante: number) {
+    setUltimaVenta({ ventaId, numeroComprobante });
     vaciar();
     setPaso("carrito");
   }
@@ -63,9 +67,17 @@ export function PantallaVenta({
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      {ultimoComprobante && (
-        <p className="rounded-lg border border-green-600/30 bg-green-600/10 p-3 text-sm">
-          Venta confirmada — comprobante N.º {ultimoComprobante}
+      {ultimaVenta && (
+        <p className="flex items-center justify-between gap-3 rounded-lg border border-green-600/30 bg-green-600/10 p-3 text-sm">
+          <span>Venta confirmada — comprobante N.º {ultimaVenta.numeroComprobante}</span>
+          <Link
+            href={`/pos/comprobante/${ultimaVenta.ventaId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            Ver / imprimir
+          </Link>
         </p>
       )}
 
