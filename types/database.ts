@@ -26,6 +26,7 @@ export type EstadoControlStock =
   | "pendiente_aprobacion"
   | "aprobado"
   | "rechazado";
+export type TipoCobroEmpleado = "por_dia" | "quincena";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -385,6 +386,66 @@ export interface Database {
           concepto?: string;
           monto?: number;
           comprobante_url?: string | null;
+          usuario_id?: string;
+          fecha?: string;
+        };
+        Relationships: [];
+      };
+      empleados: {
+        Row: {
+          id: string;
+          nombre: string;
+          tipo_cobro: TipoCobroEmpleado;
+          activo: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          nombre: string;
+          tipo_cobro: TipoCobroEmpleado;
+          activo?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          tipo_cobro?: TipoCobroEmpleado;
+          activo?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      pagos_empleados: {
+        Row: {
+          id: string;
+          empleado_id: string;
+          caja_turno_id: string;
+          monto: number;
+          periodo_desde: string;
+          periodo_hasta: string;
+          observaciones: string | null;
+          usuario_id: string;
+          fecha: string;
+        };
+        Insert: {
+          id?: string;
+          empleado_id: string;
+          caja_turno_id: string;
+          monto: number;
+          periodo_desde: string;
+          periodo_hasta: string;
+          observaciones?: string | null;
+          usuario_id: string;
+          fecha?: string;
+        };
+        Update: {
+          id?: string;
+          empleado_id?: string;
+          caja_turno_id?: string;
+          monto?: number;
+          periodo_desde?: string;
+          periodo_hasta?: string;
+          observaciones?: string | null;
           usuario_id?: string;
           fecha?: string;
         };

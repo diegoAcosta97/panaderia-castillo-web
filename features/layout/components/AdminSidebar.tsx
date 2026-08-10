@@ -15,6 +15,8 @@ import {
   ShoppingCart,
   ClipboardList,
   Settings,
+  UserCog,
+  HandCoins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
@@ -27,6 +29,8 @@ const SECCIONES = [
   { href: "/admin/caja", label: "Caja", icon: Wallet },
   { href: "/admin/proveedores", label: "Proveedores", icon: Truck },
   { href: "/admin/gastos", label: "Gastos", icon: Receipt },
+  { href: "/admin/empleados", label: "Empleados", icon: UserCog },
+  { href: "/admin/pagos-empleados", label: "Pagos a empleados", icon: HandCoins },
   { href: "/admin/ofertas", label: "Ofertas", icon: Percent },
   { href: "/admin/descuentos", label: "Descuentos", icon: Tag },
   { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
