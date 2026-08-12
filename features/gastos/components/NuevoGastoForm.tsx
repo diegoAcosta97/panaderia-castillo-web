@@ -48,7 +48,11 @@ export function NuevoGastoForm({ proveedores }: { proveedores: Proveedor[] }) {
         <Label htmlFor="gasto-proveedor">Proveedor</Label>
         <Select value={proveedorId} onValueChange={(v) => v && setProveedorId(v)}>
           <SelectTrigger id="gasto-proveedor" className="w-full">
-            <SelectValue />
+            {/* children como función: el label por defecto de Base UI solo se resuelve
+                mientras el popup está (o estuvo) montado -- docs/backlog/14-mermas-consumo-interno.md. */}
+            <SelectValue>
+              {(value: string) => proveedores.find((p) => p.id === value)?.nombre ?? value}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {proveedores.map((p) => (

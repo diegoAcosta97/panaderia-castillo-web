@@ -46,6 +46,11 @@ const ETIQUETA_CONDICION: Record<TipoCondicionDescuento, string> = {
   categoria_incluida: "Incluye categoría",
 };
 
+const ETIQUETA_EFECTO: Record<TipoEfectoDescuento, string> = {
+  porcentaje: "% del total",
+  monto_fijo: "Monto fijo",
+};
+
 export function DescuentoDialog({
   productos,
   categorias,
@@ -185,7 +190,9 @@ export function DescuentoDialog({
                       onValueChange={(v) => v && actualizarCondicion(index, { tipo: v as TipoCondicionDescuento })}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue />
+                        <SelectValue>
+                          {(value: TipoCondicionDescuento) => ETIQUETA_CONDICION[value] ?? value}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {(Object.keys(ETIQUETA_CONDICION) as TipoCondicionDescuento[]).map((tipo) => (
@@ -223,7 +230,11 @@ export function DescuentoDialog({
                         onValueChange={(v) => v && actualizarCondicion(index, { productoId: v })}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Producto" />
+                          <SelectValue>
+                            {(value: string) =>
+                              value ? (productos.find((p) => p.id === value)?.nombre ?? value) : "Producto"
+                            }
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {productos.map((p) => (
@@ -252,7 +263,11 @@ export function DescuentoDialog({
                         onValueChange={(v) => v && actualizarCondicion(index, { categoriaId: v })}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Categoría" />
+                          <SelectValue>
+                            {(value: string) =>
+                              value ? (categorias.find((c) => c.id === value)?.nombre ?? value) : "Categoría"
+                            }
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {categorias.map((c) => (
@@ -295,7 +310,9 @@ export function DescuentoDialog({
               onValueChange={(v) => v && setTipoEfecto(v as TipoEfectoDescuento)}
             >
               <SelectTrigger id="descuento-tipo-efecto" className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {(value: TipoEfectoDescuento) => ETIQUETA_EFECTO[value] ?? value}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="porcentaje">% del total</SelectItem>

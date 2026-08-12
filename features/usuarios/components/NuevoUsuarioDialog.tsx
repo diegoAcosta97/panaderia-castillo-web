@@ -25,6 +25,11 @@ import { crearUsuario } from "@/features/usuarios/actions";
 import { getErrorMessage } from "@/lib/errors";
 import type { RolUsuario } from "@/types/database";
 
+const ETIQUETA_ROL: Record<RolUsuario, string> = {
+  cajero: "Cajero",
+  administrador: "Administrador",
+};
+
 export function NuevoUsuarioDialog({ onSaved }: { onSaved?: () => void } = {}) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -101,9 +106,9 @@ export function NuevoUsuarioDialog({ onSaved }: { onSaved?: () => void } = {}) {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="nuevo-rol">Rol</Label>
-              <Select value={rol} onValueChange={(v) => v && setRol(v)}>
+              <Select value={rol} onValueChange={(v) => v && setRol(v as RolUsuario)}>
                 <SelectTrigger id="nuevo-rol" className="w-full">
-                  <SelectValue />
+                  <SelectValue>{(value: RolUsuario) => ETIQUETA_ROL[value] ?? value}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cajero">Cajero</SelectItem>

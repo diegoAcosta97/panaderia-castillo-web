@@ -18,6 +18,11 @@ import { useUsuariosTable } from "@/features/usuarios/hooks/useUsuariosTable";
 import type { Perfil } from "@/repositories/perfilesRepository";
 import type { RolUsuario } from "@/types/database";
 
+const ETIQUETA_ROL: Record<RolUsuario, string> = {
+  cajero: "Cajero",
+  administrador: "Administrador",
+};
+
 function RolCell({ perfil }: { perfil: Perfil }) {
   const { session } = useSession();
   const esUnoMismo = session?.perfil.id === perfil.id;
@@ -34,7 +39,7 @@ function RolCell({ perfil }: { perfil: Perfil }) {
     // Nadie puede degradarse a sí mismo por accidente y quedar sin admin en la sesión.
     <Select value={rol} onValueChange={handleRolChange} disabled={esUnoMismo || isPending}>
       <SelectTrigger className="w-36">
-        <SelectValue />
+        <SelectValue>{(value: RolUsuario) => ETIQUETA_ROL[value] ?? value}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="cajero">Cajero</SelectItem>

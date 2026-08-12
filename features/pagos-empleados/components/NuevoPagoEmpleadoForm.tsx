@@ -61,7 +61,9 @@ export function NuevoPagoEmpleadoForm({ empleados }: { empleados: Empleado[] }) 
         <Label htmlFor="pago-empleado">Empleado</Label>
         <Select value={empleadoId} onValueChange={(v) => v && setEmpleadoId(v)}>
           <SelectTrigger id="pago-empleado" className="w-full">
-            <SelectValue />
+            <SelectValue>
+              {(value: string) => empleados.find((e) => e.id === value)?.nombre ?? value}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {empleados.map((e) => (

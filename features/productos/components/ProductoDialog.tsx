@@ -33,6 +33,11 @@ import type { TipoVentaProducto } from "@/types/database";
 // (RF-1.3, docs/backlog/03-productos.md#E3-5).
 const PALABRA_PANADERIA = /panader/i;
 
+const ETIQUETA_TIPO_VENTA: Record<TipoVentaProducto, string> = {
+  unidad: "Unidad",
+  peso: "Peso (kg)",
+};
+
 export function ProductoDialog({
   categorias,
   producto,
@@ -159,7 +164,10 @@ export function ProductoDialog({
             <Label htmlFor="producto-categoria">Categoría</Label>
             <Select value={categoriaId} onValueChange={(v) => v && handleCategoriaChange(v)}>
               <SelectTrigger id="producto-categoria" className="w-full">
-                <SelectValue />
+                {/* children como función: ver docs/backlog/14-mermas-consumo-interno.md */}
+                <SelectValue>
+                  {(value: string) => categorias.find((c) => c.id === value)?.nombre ?? value}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {categorias.map((c) => (
@@ -179,7 +187,9 @@ export function ProductoDialog({
               disabled={esEdicion}
             >
               <SelectTrigger id="producto-tipo-venta" className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {(value: TipoVentaProducto) => ETIQUETA_TIPO_VENTA[value] ?? value}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="unidad">Unidad</SelectItem>

@@ -176,7 +176,11 @@ export function OfertaDialog({
                     onValueChange={(v) => v && actualizarItem(index, { productoId: v })}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Producto" />
+                      <SelectValue>
+                        {(value: string) =>
+                          value ? (productos.find((p) => p.id === value)?.nombre ?? value) : "Producto"
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {productos.map((p) => (
@@ -218,7 +222,9 @@ export function OfertaDialog({
               onValueChange={(v) => v && setTipoBeneficio(v as TipoBeneficioOferta)}
             >
               <SelectTrigger id="oferta-tipo-beneficio" className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {(value: TipoBeneficioOferta) => ETIQUETA_BENEFICIO[value] ?? value}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {(Object.keys(ETIQUETA_BENEFICIO) as TipoBeneficioOferta[]).map((tipo) => (

@@ -25,6 +25,11 @@ import { getErrorMessage } from "@/lib/errors";
 import type { Empleado } from "@/repositories/empleadosRepository";
 import type { TipoCobroEmpleado } from "@/types/database";
 
+const ETIQUETA_TIPO_COBRO: Record<TipoCobroEmpleado, string> = {
+  por_dia: "Día",
+  quincena: "Quincena",
+};
+
 export function EmpleadoDialog({
   empleado,
   onSaved,
@@ -105,7 +110,9 @@ export function EmpleadoDialog({
               onValueChange={(v) => v && setTipoCobro(v as TipoCobroEmpleado)}
             >
               <SelectTrigger id="empleado-tipo-cobro" className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {(value: TipoCobroEmpleado) => ETIQUETA_TIPO_COBRO[value] ?? value}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="por_dia">Día</SelectItem>
