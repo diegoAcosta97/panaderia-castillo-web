@@ -144,6 +144,21 @@ cliente / programa de fidelización.
 - RF-10.3 La sesión caduca por inactividad a la hora (60 minutos sin uso); al vencer, cualquier
   acción vuelve a pedir login. No afecta un turno de caja que haya quedado abierto.
 
+## RF-11 — Merma y consumo interno
+
+- RF-11.1 El sistema permite registrar la salida de stock de un producto por **merma** (rotura,
+  vencimiento, deterioro) con un motivo obligatorio. Lo puede registrar tanto el Cajero como el
+  Administrador, sin aprobación previa — a diferencia del ajuste de un control de stock (RF-9.4),
+  es un hecho presenciado directamente por quien lo registra, no una diferencia a investigar.
+- RF-11.2 El sistema permite registrar la salida de stock de un producto por **consumo interno**
+  (personal o dueño), con un motivo obligatorio y, opcionalmente, el empleado que consumió. Mismo
+  criterio de permisos que RF-11.1.
+- RF-11.3 Ninguna de las dos operaciones puede dejar el stock del sistema en negativo: se
+  rechazan si la cantidad supera el stock actual del producto.
+- RF-11.4 Ambos movimientos quedan en el mismo historial auditable que el resto de los
+  movimientos de stock (RF-9.3), visibles por producto y por usuario que los registró, para poder
+  detectar patrones (ej. un usuario que registra merma con frecuencia inusual).
+
 ## Decisiones confirmadas
 
 - **Lector de código de barras**: USB (funciona como entrada de teclado — el foco de la pantalla

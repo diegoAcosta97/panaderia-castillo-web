@@ -13,7 +13,9 @@ export type TipoMovimientoStock =
   | "etiqueta_generada"
   | "ajuste_control_stock"
   | "ajuste_manual"
-  | "alta_inicial";
+  | "alta_inicial"
+  | "merma"
+  | "consumo_interno";
 export type EstadoCajaTurno = "abierta" | "cerrada";
 export type TipoBeneficioOferta = "precio_fijo" | "descuento_porcentaje" | "descuento_monto";
 export type TipoEfectoDescuento = "porcentaje" | "monto_fijo";
@@ -169,6 +171,8 @@ export interface Database {
           referencia_id: string | null;
           usuario_id: string;
           fecha: string;
+          motivo: string | null;
+          empleado_id: string | null;
         };
         Insert: {
           id?: string;
@@ -179,6 +183,8 @@ export interface Database {
           referencia_id?: string | null;
           usuario_id: string;
           fecha?: string;
+          motivo?: string | null;
+          empleado_id?: string | null;
         };
         Update: {
           id?: string;
@@ -189,6 +195,8 @@ export interface Database {
           referencia_id?: string | null;
           usuario_id?: string;
           fecha?: string;
+          motivo?: string | null;
+          empleado_id?: string | null;
         };
         Relationships: [];
       };
@@ -806,6 +814,23 @@ export interface Database {
           p_observaciones: string | null;
         };
         Returns: Database["public"]["Tables"]["caja_turnos"]["Row"];
+      };
+      registrar_merma: {
+        Args: {
+          p_producto_id: string;
+          p_cantidad: number;
+          p_motivo: string;
+        };
+        Returns: Json;
+      };
+      registrar_consumo_interno: {
+        Args: {
+          p_producto_id: string;
+          p_cantidad: number;
+          p_empleado_id: string | null;
+          p_motivo: string;
+        };
+        Returns: Json;
       };
     };
     Enums: {

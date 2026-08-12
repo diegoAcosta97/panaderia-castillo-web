@@ -16,8 +16,9 @@ Documentos de referencia (leer antes de las tareas):
 
 ## Estado
 
-Las 14 epics (0 a 13) están implementadas y verificadas contra el proyecto de Supabase real y un
-navegador real — ver el detalle y las notas de verificación en cada archivo de epic.
+Las epics 0 a 13 están implementadas y verificadas contra el proyecto de Supabase real y un
+navegador real — ver el detalle y las notas de verificación en cada archivo de epic. EPIC 14 está
+en curso.
 
 ## Índice de EPICs
 
@@ -37,6 +38,7 @@ navegador real — ver el detalle y las notas de verificación en cada archivo d
 | 11 | [11-control-stock.md](./11-control-stock.md) | Conteo periódico de stock y aprobación de ajustes |
 | 12 | [12-configuracion.md](./12-configuracion.md) | Datos del comercio |
 | 13 | [13-seguridad.md](./13-seguridad.md) | RLS transversal y auditoría final |
+| 14 | [14-mermas-consumo-interno.md](./14-mermas-consumo-interno.md) | Registro de merma y consumo interno como movimientos de stock |
 
 ## Decisiones registradas
 
@@ -70,6 +72,8 @@ EPIC 0 completo
                                       └─▶ EPIC 13 (seguridad — checkpoint final, aunque las
                                           políticas de cada tabla conviene escribirlas junto con
                                           cada epic, no dejarlas todas para el final)
+                                └─▶ EPIC 14 (merma/consumo interno, depende solo de EPIC 3 y de
+                                    `empleados`)
 ```
 
 Notas sobre el orden:

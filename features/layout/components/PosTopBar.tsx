@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChefHat, ShoppingCart, Wallet, Receipt, Tag } from "lucide-react";
+import { ChefHat, ShoppingCart, Wallet, Receipt, Tag, PackageX, PackageMinus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ const SECCIONES = [
   { href: "/pos/caja", label: "Caja", icon: Wallet },
   { href: "/pos/gastos", label: "Gastos", icon: Receipt },
   { href: "/pos/etiquetas", label: "Etiquetas", icon: Tag },
+  { href: "/pos/merma", label: "Merma", icon: PackageX },
+  { href: "/pos/consumo-interno", label: "Consumo interno", icon: PackageMinus },
 ];
 
 export function PosTopBar() {

@@ -13,7 +13,8 @@ relevados. Si aparece el modelo original, se compara contra esto y se ajusta.
 - `rol_usuario`: `administrador` | `cajero`
 - `tipo_venta_producto`: `unidad` | `peso`
 - `tipo_movimiento_stock`: `venta` | `anulacion_venta` | `etiqueta_generada` |
-  `ajuste_control_stock` | `ajuste_manual` | `alta_inicial`
+  `ajuste_control_stock` | `ajuste_manual` | `alta_inicial` | `merma` | `consumo_interno`
+  (los dos últimos, EPIC 14)
 - `estado_caja_turno`: `abierta` | `cerrada`
 - `estado_venta`: `pendiente_pago` | `completada` | `anulada`
 - `medio_pago`: `efectivo` | `mercado_pago`
@@ -258,11 +259,14 @@ recalcular, se evalúa cachear el PDF en Supabase Storage.
 | referencia_id | uuid, nullable | id de la venta / lote de etiquetas / control de stock que originó el movimiento |
 | usuario_id | uuid | FK a `perfiles.id` |
 | fecha | timestamptz | default now() |
+| motivo | text, nullable | EPIC 14. Obligatorio a nivel de función (no de columna) para `merma`/`consumo_interno`; sin uso para el resto de los tipos |
+| empleado_id | uuid, nullable | EPIC 14. FK a `empleados.id`. Solo se completa para `consumo_interno`, y ahí mismo es opcional (permite "consumo del dueño / sin asignar") |
 
 El descuento de stock al confirmar una venta debe hacerse en una función de base de datos
 (`SECURITY DEFINER`, transaccional) que lea y actualice `productos.stock_actual` de forma
 atómica — mismo patrón que `book_appointment` en `salus-web` — para evitar condiciones de
-carrera si dos ventas del mismo producto se confirman casi al mismo tiempo.
+carrera si dos ventas del mismo producto se confirman casi al mismo tiempo. `registrar_merma` y
+`registrar_consumo_interno` (EPIC 14) siguen el mismo patrón.
 
 ## Etiquetas
 
@@ -318,6 +322,7 @@ Al aprobar (`estado = 'aprobado'`): por cada detalle con `diferencia != 0` se ac
 perfiles ──< caja_turnos (apertura/cierre)
 perfiles ──< ventas (cajero)
 perfiles ──< gastos, etiqueta_lotes, controles_stock, movimientos_stock (usuario)
+empleados ──< movimientos_stock (empleado_id, solo consumo_interno — EPIC 14)
 
 categorias ──< productos
 productos ──< oferta_items >── ofertas

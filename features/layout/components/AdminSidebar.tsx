@@ -17,6 +17,7 @@ import {
   Settings,
   UserCog,
   HandCoins,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
@@ -35,6 +36,7 @@ const SECCIONES = [
   { href: "/admin/descuentos", label: "Descuentos", icon: Tag },
   { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
   { href: "/admin/control-stock", label: "Control de stock", icon: ClipboardList },
+  { href: "/admin/movimientos-stock", label: "Movimientos de stock", icon: History },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
 ];
 
