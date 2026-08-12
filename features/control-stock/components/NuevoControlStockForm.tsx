@@ -21,10 +21,15 @@ import type { Producto } from "@/repositories/productosRepository";
 // E11-2: `productos` ya viene filtrado a controla_stock = true (RF-9.1). El stock_actual leído
 // al renderizar esta página ES el snapshot stock_sistema (RF-9.2) -- se guarda en un ref por
 // producto para que no cambie aunque el admin tarde en completar el conteo.
+//
+// A propósito, quien cuenta NO ve acá ni el stock sistema ni la diferencia: si los viera,
+// terminaría ajustando el número contado para que "cierre" en vez de reportar lo que efectivamente
+// hay en el estante, que es todo el sentido de un conteo físico independiente. Esos dos datos sí
+// se calculan y se mandan igual al finalizar (para el informe completo que ve el admin en
+// /admin/control-stock/[id] al aprobar/rechazar) -- que no se pueda ver la comparación EN VIVO
+// mientras estás contando, en el input, así es como sirve.
 export function NuevoControlStockForm({ productos }: { productos: Producto[] }) {
-  const [contados, setContados] = useState<Record<string, string>>(() =>
-    Object.fromEntries(productos.map((p) => [p.id, String(p.stock_actual ?? 0)])),
-  );
+  const [contados, setContados] = useState<Record<string, string>>({});
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,16 +84,13 @@ export function NuevoControlStockForm({ productos }: { productos: Producto[] }) 
         <TableHeader>
           <TableRow>
             <TableHead>Producto</TableHead>
-            <TableHead>Stock sistema</TableHead>
             <TableHead>Stock contado</TableHead>
-            <TableHead>Diferencia</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filas.map(({ producto, stockSistema, diferencia }) => (
+          {filas.map(({ producto }) => (
             <TableRow key={producto.id}>
               <TableCell>{producto.nombre}</TableCell>
-              <TableCell>{stockSistema}</TableCell>
               <TableCell>
                 <Input
                   type="number"
@@ -101,17 +103,6 @@ export function NuevoControlStockForm({ productos }: { productos: Producto[] }) 
                     setContados((prev) => ({ ...prev, [producto.id]: e.target.value }))
                   }
                 />
-              </TableCell>
-              <TableCell
-                className={
-                  diferencia === null
-                    ? "text-muted-foreground"
-                    : diferencia === 0
-                      ? "text-muted-foreground"
-                      : "font-medium text-destructive"
-                }
-              >
-                {diferencia === null ? "—" : diferencia > 0 ? `+${diferencia}` : diferencia}
               </TableCell>
             </TableRow>
           ))}

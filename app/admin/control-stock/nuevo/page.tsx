@@ -11,9 +11,10 @@ export default async function NuevoControlStockPage() {
       <div>
         <h1 className="text-2xl font-semibold">Nuevo control de stock</h1>
         <p className="text-muted-foreground text-sm">
-          El &quot;stock sistema&quot; de cada producto es el que tiene ahora mismo. Contá cada
-          uno y cargá el resultado -- al finalizar, el conteo queda pendiente de aprobación (no
-          se ajusta ningún stock todavía).
+          Contá cada producto y cargá lo que efectivamente hay, sin mirar el sistema -- al
+          finalizar, el conteo queda pendiente de aprobación con el informe completo (stock
+          sistema vs. contado) para que el administrador lo revise. No se ajusta ningún stock
+          todavía.
         </p>
       </div>
       <NuevoControlStockForm productos={productos} />
