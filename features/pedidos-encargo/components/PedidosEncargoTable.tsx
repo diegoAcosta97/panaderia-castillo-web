@@ -19,6 +19,7 @@ import { RegistrarSenaDialog } from "@/features/pedidos-encargo/components/Regis
 import { cancelarPedidoEncargo } from "@/repositories/pedidosEncargoRepository";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
+import { formatearMoneda } from "@/lib/format";
 import type { PedidoEncargoConDetalle } from "@/repositories/pedidosEncargoRepository";
 import type { Producto } from "@/repositories/productosRepository";
 
@@ -76,17 +77,17 @@ export function PedidosEncargoTable({ productos }: { productos: Producto[] }) {
       {
         id: "total",
         header: "Total estimado",
-        cell: ({ row }) => `$${totalEstimado(row.original).toFixed(2)}`,
+        cell: ({ row }) => formatearMoneda(totalEstimado(row.original)),
       },
       {
         id: "sena",
         header: "Seña cobrada",
-        cell: ({ row }) => `$${row.original.sena_total.toFixed(2)}`,
+        cell: ({ row }) => formatearMoneda(row.original.sena_total),
       },
       {
         id: "saldo",
         header: "Saldo",
-        cell: ({ row }) => `$${(totalEstimado(row.original) - row.original.sena_total).toFixed(2)}`,
+        cell: ({ row }) => formatearMoneda(totalEstimado(row.original) - row.original.sena_total),
       },
       {
         id: "estado",

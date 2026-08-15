@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Filter, Download } from "lucide-react";
+import { Filter, Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { ListadoImprimible } from "@/components/print/ListadoImprimible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,6 @@ import { useMovimientosStockTable } from "@/features/movimientos-stock/hooks/use
 import { TIPO_MOVIMIENTO_LABELS, TIPOS_MOVIMIENTO_ORDENADOS } from "@/features/movimientos-stock/lib/tipoMovimientoLabels";
 import { listMovimientosStock } from "@/repositories/movimientosStockRepository";
 import { createClient } from "@/lib/supabase/client";
-import { descargarCsv } from "@/lib/csv";
 import { getErrorMessage } from "@/lib/errors";
 import type { MovimientoStock } from "@/repositories/movimientosStockRepository";
 import type { Producto } from "@/repositories/productosRepository";
@@ -38,8 +38,17 @@ export function MovimientosStockTable({
   };
   const [exportando, setExportando] = useState(false);
   const [errorExport, setErrorExport] = useState<string | null>(null);
+  const [listado, setListado] = useState<(string | number)[][] | null>(null);
 
-  async function exportarCsv() {
+  useEffect(() => {
+    if (!listado) return;
+    const limpiar = () => setListado(null);
+    window.addEventListener("afterprint", limpiar);
+    window.print();
+    return () => window.removeEventListener("afterprint", limpiar);
+  }, [listado]);
+
+  async function exportarImprimible() {
     setErrorExport(null);
     setExportando(true);
     try {
@@ -50,9 +59,7 @@ export function MovimientosStockTable({
         desde: table.desde || undefined,
         hasta: table.hasta || undefined,
       });
-      descargarCsv(
-        `movimientos_stock_${new Date().toISOString().slice(0, 10)}.csv`,
-        ["Fecha", "Tipo", "Producto", "Cantidad", "Stock resultante", "Motivo", "Empleado", "Registrado por"],
+      setListado(
         movimientos.map((m) => [
           new Date(m.fecha).toLocaleString("es-AR"),
           TIPO_MOVIMIENTO_LABELS[m.tipo],
@@ -65,7 +72,7 @@ export function MovimientosStockTable({
         ]),
       );
     } catch (err) {
-      setErrorExport(getErrorMessage(err, "No se pudo exportar el CSV."));
+      setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
     } finally {
       setExportando(false);
     }
@@ -119,7 +126,8 @@ export function MovimientosStockTable({
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+    <div className="flex flex-col gap-4 print:hidden">
       {/* Selects nativos a propósito, mismo criterio que features/gastos/components/GastosTable.tsx. */}
       <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-2">
@@ -178,9 +186,9 @@ export function MovimientosStockTable({
             Filtros activos
           </p>
         )}
-        <Button type="button" variant="outline" onClick={exportarCsv} disabled={exportando}>
-          <Download className="size-4" />
-          {exportando ? "Exportando..." : "Exportar CSV"}
+        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+          <Printer className="size-4" />
+          {exportando ? "Generando..." : "Exportar listado"}
         </Button>
       </div>
 
@@ -199,5 +207,22 @@ export function MovimientosStockTable({
         emptyMessage="No hay movimientos que coincidan con el filtro."
       />
     </div>
+    {listado && (
+      <ListadoImprimible
+        titulo="Movimientos de stock"
+        headers={[
+          "Fecha",
+          "Tipo",
+          "Producto",
+          "Cantidad",
+          "Stock resultante",
+          "Motivo",
+          "Empleado",
+          "Registrado por",
+        ]}
+        rows={listado}
+      />
+    )}
+    </>
   );
 }

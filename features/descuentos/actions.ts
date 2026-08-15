@@ -10,6 +10,7 @@ import {
   type Descuento,
   type DescuentoInput,
 } from "@/repositories/descuentosRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 
 async function requireAdmin() {
   const session = await getServerSession();
@@ -18,24 +19,30 @@ async function requireAdmin() {
   }
 }
 
-export async function crearDescuento(input: DescuentoInput): Promise<Descuento> {
-  await requireAdmin();
-  const supabase = await createClient();
-  const descuento = await crearDescuentoRepo(supabase, input);
-  revalidatePath("/admin/descuentos");
-  return descuento;
+export async function crearDescuento(input: DescuentoInput): Promise<ActionResult<Descuento>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    const descuento = await crearDescuentoRepo(supabase, input);
+    revalidatePath("/admin/descuentos");
+    return descuento;
+  }, "No se pudo crear el descuento");
 }
 
-export async function actualizarDescuento(id: string, input: DescuentoInput) {
-  await requireAdmin();
-  const supabase = await createClient();
-  await actualizarDescuentoRepo(supabase, id, input);
-  revalidatePath("/admin/descuentos");
+export async function actualizarDescuento(id: string, input: DescuentoInput): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    await actualizarDescuentoRepo(supabase, id, input);
+    revalidatePath("/admin/descuentos");
+  }, "No se pudo actualizar el descuento");
 }
 
-export async function actualizarDescuentoActivo(id: string, activo: boolean) {
-  await requireAdmin();
-  const supabase = await createClient();
-  await actualizarDescuentoActivoRepo(supabase, id, activo);
-  revalidatePath("/admin/descuentos");
+export async function actualizarDescuentoActivo(id: string, activo: boolean): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    await actualizarDescuentoActivoRepo(supabase, id, activo);
+    revalidatePath("/admin/descuentos");
+  }, "No se pudo actualizar el descuento");
 }

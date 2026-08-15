@@ -11,6 +11,7 @@ import { useCarrito } from "@/features/ventas/hooks/useCarrito";
 import { crearPedidoEncargo } from "@/repositories/pedidosEncargoRepository";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
+import { formatearMoneda } from "@/lib/format";
 
 const HOY = new Date().toISOString().slice(0, 10);
 
@@ -103,7 +104,8 @@ export function NuevoPedidoForm({ onCreado }: { onCreado?: () => void }) {
 
       {renglones.length > 0 && (
         <p className="text-sm text-muted-foreground">
-          Total estimado (a precio de hoy): <span className="font-medium text-foreground">${total.toFixed(2)}</span>
+          Total estimado (a precio de hoy):{" "}
+          <span className="font-medium text-foreground">{formatearMoneda(total)}</span>
         </p>
       )}
 

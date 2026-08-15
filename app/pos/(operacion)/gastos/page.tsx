@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatearMoneda } from "@/lib/format";
 
 // El layout de app/pos/(operacion) ya garantiza que haya un turno abierto para llegar acá
 // (E4-2).
@@ -41,7 +42,7 @@ export default async function GastosPage() {
               <TableCell>
                 {proveedores.find((p) => p.id === gasto.proveedor_id)?.nombre ?? "—"}
               </TableCell>
-              <TableCell>${gasto.monto}</TableCell>
+              <TableCell>{formatearMoneda(gasto.monto)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

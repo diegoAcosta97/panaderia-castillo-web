@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { OfertaDialog } from "@/features/ofertas/components/OfertaDialog";
 import { actualizarOfertaActivo } from "@/features/ofertas/actions";
 import { useOfertasTable } from "@/features/ofertas/hooks/useOfertasTable";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Producto } from "@/repositories/productosRepository";
 import type { OfertaConItems } from "@/repositories/ofertasRepository";
 
@@ -22,7 +23,13 @@ function ActivaCell({ oferta }: { oferta: OfertaConItems }) {
 
   function handleActivoChange(nuevoActivo: boolean) {
     setActivo(nuevoActivo);
-    startTransition(() => actualizarOfertaActivo(oferta.id, nuevoActivo));
+    startTransition(async () => {
+      try {
+        throwIfActionError(await actualizarOfertaActivo(oferta.id, nuevoActivo));
+      } catch {
+        setActivo(!nuevoActivo);
+      }
+    });
   }
 
   return (

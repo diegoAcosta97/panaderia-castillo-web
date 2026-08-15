@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { crearEmpleado, actualizarEmpleado } from "@/features/empleados/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Empleado } from "@/repositories/empleadosRepository";
 import type { TipoCobroEmpleado } from "@/types/database";
 
@@ -53,9 +54,9 @@ export function EmpleadoDialog({
 
     try {
       if (empleado) {
-        await actualizarEmpleado(empleado.id, { nombre, tipo_cobro: tipoCobro });
+        throwIfActionError(await actualizarEmpleado(empleado.id, { nombre, tipo_cobro: tipoCobro }));
       } else {
-        await crearEmpleado({ nombre, tipo_cobro: tipoCobro });
+        throwIfActionError(await crearEmpleado({ nombre, tipo_cobro: tipoCobro }));
         setNombre("");
         setTipoCobro("por_dia");
       }

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTurnoAbierto } from "@/repositories/cajaTurnosRepository";
 import { buttonVariants } from "@/components/ui/button";
 import { AperturaTurnoForm } from "@/features/caja/components/AperturaTurnoForm";
+import { formatearMoneda } from "@/lib/format";
 
 export default async function CajaPage() {
   const supabase = await createClient();
@@ -22,7 +23,7 @@ export default async function CajaPage() {
       <h1 className="text-2xl font-semibold">Turno de caja abierto</h1>
       <div className="text-sm text-muted-foreground">
         <p>Abierto: {new Date(turno.fecha_apertura).toLocaleString("es-AR")}</p>
-        <p>Efectivo inicial: ${turno.monto_apertura}</p>
+        <p>Efectivo inicial: {formatearMoneda(turno.monto_apertura)}</p>
         {turno.etiqueta_turno && <p>Turno: {turno.etiqueta_turno}</p>}
       </div>
       <Link href="/pos/caja/cierre" className={buttonVariants({ className: "w-fit" })}>

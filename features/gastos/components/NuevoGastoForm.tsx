@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { crearGasto } from "@/features/gastos/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Proveedor } from "@/repositories/proveedoresRepository";
 
 export function NuevoGastoForm({ proveedores }: { proveedores: Proveedor[] }) {
@@ -31,7 +32,7 @@ export function NuevoGastoForm({ proveedores }: { proveedores: Proveedor[] }) {
     setError(null);
 
     try {
-      await crearGasto({ proveedorId, concepto, monto: Number(monto) });
+      throwIfActionError(await crearGasto({ proveedorId, concepto, monto: Number(monto) }));
       setConcepto("");
       setMonto("");
       router.refresh();

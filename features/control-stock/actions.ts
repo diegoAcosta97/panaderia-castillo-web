@@ -12,6 +12,7 @@ import {
   type ControlStock,
   type DetalleInput,
 } from "@/repositories/controlStockRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 
 async function requireAdmin() {
   const session = await getServerSession();
@@ -29,36 +30,42 @@ async function requireAdmin() {
 export async function finalizarConteo(
   detalles: DetalleInput[],
   observaciones: string,
-): Promise<ControlStock> {
-  const session = await requireAdmin();
-  if (detalles.length === 0) {
-    throw new Error("No hay productos para contar.");
-  }
+): Promise<ActionResult<ControlStock>> {
+  return ejecutarAccion(async () => {
+    const session = await requireAdmin();
+    if (detalles.length === 0) {
+      throw new Error("No hay productos para contar.");
+    }
 
-  const supabase = await createClient();
-  const control = await crearControlStock(supabase, session.user.id);
-  await insertarDetalles(supabase, control.id, detalles);
-  await cerrarControlStock(supabase, control.id, observaciones || null);
+    const supabase = await createClient();
+    const control = await crearControlStock(supabase, session.user.id);
+    await insertarDetalles(supabase, control.id, detalles);
+    await cerrarControlStock(supabase, control.id, observaciones || null);
 
-  revalidatePath("/admin/control-stock");
-  return control;
+    revalidatePath("/admin/control-stock");
+    return control;
+  }, "No se pudo finalizar el conteo");
 }
 
-export async function aprobarControlStock(controlStockId: string): Promise<void> {
-  const session = await requireAdmin();
-  const supabase = await createClient();
-  await aprobarControlStockRepo(supabase, controlStockId, session.user.id);
+export async function aprobarControlStock(controlStockId: string): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    const session = await requireAdmin();
+    const supabase = await createClient();
+    await aprobarControlStockRepo(supabase, controlStockId, session.user.id);
 
-  revalidatePath("/admin/control-stock");
-  revalidatePath(`/admin/control-stock/${controlStockId}`);
-  revalidatePath("/admin/productos");
+    revalidatePath("/admin/control-stock");
+    revalidatePath(`/admin/control-stock/${controlStockId}`);
+    revalidatePath("/admin/productos");
+  }, "No se pudo aprobar el control de stock");
 }
 
-export async function rechazarControlStock(controlStockId: string): Promise<void> {
-  const session = await requireAdmin();
-  const supabase = await createClient();
-  await rechazarControlStockRepo(supabase, controlStockId, session.user.id);
+export async function rechazarControlStock(controlStockId: string): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    const session = await requireAdmin();
+    const supabase = await createClient();
+    await rechazarControlStockRepo(supabase, controlStockId, session.user.id);
 
-  revalidatePath("/admin/control-stock");
-  revalidatePath(`/admin/control-stock/${controlStockId}`);
+    revalidatePath("/admin/control-stock");
+    revalidatePath(`/admin/control-stock/${controlStockId}`);
+  }, "No se pudo rechazar el control de stock");
 }

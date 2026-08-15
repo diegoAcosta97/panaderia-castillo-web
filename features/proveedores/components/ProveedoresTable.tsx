@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ProveedorDialog } from "@/features/proveedores/components/ProveedorDialog";
 import { actualizarProveedor } from "@/features/proveedores/actions";
 import { useProveedoresTable } from "@/features/proveedores/hooks/useProveedoresTable";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Proveedor } from "@/repositories/proveedoresRepository";
 
 function ActivoCell({ proveedor }: { proveedor: Proveedor }) {
@@ -15,7 +16,13 @@ function ActivoCell({ proveedor }: { proveedor: Proveedor }) {
 
   function handleActivoChange(nuevoActivo: boolean) {
     setActivo(nuevoActivo);
-    startTransition(() => actualizarProveedor(proveedor.id, { activo: nuevoActivo }));
+    startTransition(async () => {
+      try {
+        throwIfActionError(await actualizarProveedor(proveedor.id, { activo: nuevoActivo }));
+      } catch {
+        setActivo(!nuevoActivo);
+      }
+    });
   }
 
   return (

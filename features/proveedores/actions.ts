@@ -9,6 +9,7 @@ import {
   type NuevoProveedor,
   type Proveedor,
 } from "@/repositories/proveedoresRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 
 async function requireAdmin() {
   const session = await getServerSession();
@@ -17,20 +18,24 @@ async function requireAdmin() {
   }
 }
 
-export async function crearProveedor(input: NuevoProveedor): Promise<Proveedor> {
-  await requireAdmin();
-  const supabase = await createClient();
-  const proveedor = await crearProveedorRepo(supabase, input);
-  revalidatePath("/admin/proveedores");
-  return proveedor;
+export async function crearProveedor(input: NuevoProveedor): Promise<ActionResult<Proveedor>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    const proveedor = await crearProveedorRepo(supabase, input);
+    revalidatePath("/admin/proveedores");
+    return proveedor;
+  }, "No se pudo crear el proveedor");
 }
 
 export async function actualizarProveedor(
   id: string,
   patch: Partial<Pick<Proveedor, "nombre" | "cuit" | "telefono" | "email" | "direccion" | "activo">>,
-) {
-  await requireAdmin();
-  const supabase = await createClient();
-  await actualizarProveedorRepo(supabase, id, patch);
-  revalidatePath("/admin/proveedores");
+): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    await actualizarProveedorRepo(supabase, id, patch);
+    revalidatePath("/admin/proveedores");
+  }, "No se pudo actualizar el proveedor");
 }

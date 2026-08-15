@@ -12,6 +12,8 @@ import { generarQrParaVenta, cancelarPagoMPPendiente } from "@/features/mercadop
 import { marcarPedidoEntregado } from "@/repositories/pedidosEncargoRepository";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
+import { formatearMoneda } from "@/lib/format";
 import type { RenglonCarritoUI } from "@/features/ventas/hooks/useCarrito";
 import type { useResumenVenta } from "@/features/ventas/hooks/useResumenVenta";
 import type { MedioPago } from "@/types/database";
@@ -40,6 +42,7 @@ export function PantallaCobro({
 
   const [formaPago, setFormaPago] = useState<FormaPago>("efectivo");
   const [montoEfectivo, setMontoEfectivo] = useState(totalACobrar.toFixed(2));
+  const [montoEntregado, setMontoEntregado] = useState("");
   const [esperandoPago, setEsperandoPago] = useState<{ ventaId: string } | null>(null);
   const [errorQr, setErrorQr] = useState<string | null>(null);
   const [generandoQr, setGenerandoQr] = useState(false);
@@ -50,6 +53,8 @@ export function PantallaCobro({
     formaPago === "efectivo" ? total : formaPago === "combinado" ? Number(montoEfectivo) || 0 : 0;
   const mercadoPago = Math.round((total - efectivo) * 100) / 100;
   const habilitado = efectivo > 0 || mercadoPago > 0 || total <= 0;
+  const entregado = Number(montoEntregado) || 0;
+  const vuelto = Math.round((entregado - efectivo) * 100) / 100;
 
   async function handleConfirmar() {
     setErrorQr(null);
@@ -83,12 +88,12 @@ export function PantallaCobro({
     // error -- reintentar después queda limpio.
     setGenerandoQr(true);
     try {
-      await generarQrParaVenta(resultado.venta_id);
+      throwIfActionError(await generarQrParaVenta(resultado.venta_id));
       setEsperandoPago({ ventaId: resultado.venta_id });
     } catch (err) {
       setErrorQr(getErrorMessage(err, "No se pudo generar el cobro de Mercado Pago"));
       try {
-        await cancelarPagoMPPendiente(resultado.venta_id);
+        throwIfActionError(await cancelarPagoMPPendiente(resultado.venta_id));
       } catch (cancelErr) {
         console.error("No se pudo limpiar la venta pendiente tras el error de Mercado Pago:", cancelErr);
       }
@@ -114,7 +119,7 @@ export function PantallaCobro({
       {senaTotal > 0 && (
         <p className="flex justify-between text-sm text-muted-foreground">
           <span>Seña ya pagada ({pedidoActivo?.clienteNombre})</span>
-          <span>-${senaTotal.toFixed(2)}</span>
+          <span>-{formatearMoneda(senaTotal)}</span>
         </p>
       )}
 
@@ -159,15 +164,36 @@ export function PantallaCobro({
               onChange={(e) => setMontoEfectivo(e.target.value)}
             />
           </div>
-          <p className="text-sm text-muted-foreground">Mercado Pago: ${mercadoPago.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">
+            Mercado Pago: {formatearMoneda(mercadoPago)}
+          </p>
         </div>
       )}
 
       {mercadoPago > 0 && (
         <p className="text-sm text-muted-foreground">
-          Se va a cobrar ${mercadoPago.toFixed(2)} por el QR fijo de la caja: decile al cliente
-          que lo escanee con la app de Mercado Pago.
+          Se va a cobrar {formatearMoneda(mercadoPago)} por el QR fijo de la caja: decile al
+          cliente que lo escanee con la app de Mercado Pago.
         </p>
+      )}
+
+      {efectivo > 0 && (
+        <div className="flex max-w-sm flex-col gap-2">
+          <Label htmlFor="monto-entregado">Con cuánto paga (efectivo)</Label>
+          <Input
+            id="monto-entregado"
+            type="number"
+            min="0"
+            step="0.01"
+            value={montoEntregado}
+            onChange={(e) => setMontoEntregado(e.target.value)}
+          />
+          {montoEntregado !== "" && (
+            <p className={vuelto < 0 ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>
+              {vuelto < 0 ? `Falta ${formatearMoneda(-vuelto)}` : `Vuelto: ${formatearMoneda(vuelto)}`}
+            </p>
+          )}
+        </div>
       )}
 
       {(error || errorQr) && <p className="text-sm text-destructive">{error || errorQr}</p>}
@@ -185,7 +211,7 @@ export function PantallaCobro({
           <CircleCheck className="size-4" />
           {isLoading || generandoQr
             ? "Confirmando..."
-            : `Confirmar venta ($${total.toFixed(2)})`}
+            : `Confirmar venta (${formatearMoneda(total)})`}
         </Button>
       </div>
     </div>

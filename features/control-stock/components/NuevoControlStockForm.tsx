@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/table";
 import { finalizarConteo } from "@/features/control-stock/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Producto } from "@/repositories/productosRepository";
+
+const PRODUCTOS_POR_PAGINA = 15;
 
 // E11-2: `productos` ya viene filtrado a controla_stock = true (RF-9.1). El stock_actual leído
 // al renderizar esta página ES el snapshot stock_sistema (RF-9.2) -- se guarda en un ref por
@@ -33,6 +36,7 @@ export function NuevoControlStockForm({ productos }: { productos: Producto[] }) 
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [pagina, setPagina] = useState(0);
   const router = useRouter();
 
   const filas = useMemo(
@@ -47,7 +51,14 @@ export function NuevoControlStockForm({ productos }: { productos: Producto[] }) 
     [productos, contados],
   );
 
+  // La validación y el envío siguen operando sobre TODAS las filas -- solo la tabla que se
+  // muestra está paginada, `contados` y `faltanValores` no dependen de qué página está activa.
   const faltanValores = filas.some((f) => f.stockContado === null || Number.isNaN(f.stockContado));
+  const pageCount = Math.max(1, Math.ceil(filas.length / PRODUCTOS_POR_PAGINA));
+  const filasPagina = filas.slice(
+    pagina * PRODUCTOS_POR_PAGINA,
+    pagina * PRODUCTOS_POR_PAGINA + PRODUCTOS_POR_PAGINA,
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,7 +71,7 @@ export function NuevoControlStockForm({ productos }: { productos: Producto[] }) 
         stockSistema: f.stockSistema,
         stockContado: f.stockContado as number,
       }));
-      const control = await finalizarConteo(detalles, observaciones);
+      const control = throwIfActionError(await finalizarConteo(detalles, observaciones));
       router.push(`/admin/control-stock/${control.id}`);
       router.refresh();
     } catch (err) {
@@ -88,7 +99,7 @@ export function NuevoControlStockForm({ productos }: { productos: Producto[] }) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filas.map(({ producto }) => (
+          {filasPagina.map(({ producto }) => (
             <TableRow key={producto.id}>
               <TableCell>{producto.nombre}</TableCell>
               <TableCell>
@@ -108,6 +119,34 @@ export function NuevoControlStockForm({ productos }: { productos: Producto[] }) 
           ))}
         </TableBody>
       </Table>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Página {pagina + 1} de {pageCount} ({filas.length} productos)
+        </p>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPagina((p) => p - 1)}
+            disabled={pagina <= 0}
+          >
+            <ChevronLeft className="size-4" />
+            Anterior
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPagina((p) => p + 1)}
+            disabled={pagina >= pageCount - 1}
+          >
+            Siguiente
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      </div>
 
       <div className="grid max-w-sm gap-2">
         <Label htmlFor="observaciones-control">Observaciones (opcional)</Label>

@@ -8,22 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cerrarTurno } from "@/features/caja/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
 
-export function CierreTurnoForm({
-  turno,
-  efectivoEsperado,
-}: {
-  turno: CajaTurno;
-  efectivoEsperado: number;
-}) {
+// A propósito, el cajero NO ve acá "efectivo esperado" ni la diferencia en vivo -- mismo
+// criterio que el conteo de stock a ciegas: si los viera, terminaría ajustando el contado para
+// que "cierre" en vez de reportar lo que efectivamente hay en la caja. cerrar_turno calcula la
+// diferencia igual, server-side, para el informe que ve el admin.
+export function CierreTurnoForm({ turno }: { turno: CajaTurno }) {
   const [montoContado, setMontoContado] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-
-  const diferencia = montoContado ? Number(montoContado) - efectivoEsperado : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,7 +28,7 @@ export function CierreTurnoForm({
     setError(null);
 
     try {
-      await cerrarTurno(turno.id, Number(montoContado), observaciones);
+      throwIfActionError(await cerrarTurno(turno.id, Number(montoContado), observaciones));
       router.push("/pos/caja");
       router.refresh();
     } catch (err) {
@@ -43,10 +40,6 @@ export function CierreTurnoForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-sm flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        Efectivo esperado:{" "}
-        <span className="font-medium text-foreground">${efectivoEsperado.toFixed(2)}</span>
-      </p>
       <div className="grid gap-2">
         <Label htmlFor="monto-contado">Efectivo contado</Label>
         <Input
@@ -59,13 +52,6 @@ export function CierreTurnoForm({
           onChange={(e) => setMontoContado(e.target.value)}
         />
       </div>
-      {diferencia !== null && (
-        <p
-          className={`text-sm ${diferencia === 0 ? "text-muted-foreground" : "text-destructive"}`}
-        >
-          Diferencia: ${diferencia.toFixed(2)}
-        </p>
-      )}
       <div className="grid gap-2">
         <Label htmlFor="observaciones">Observaciones (opcional)</Label>
         <Input

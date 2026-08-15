@@ -1,17 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Filter, Download } from "lucide-react";
+import { Filter, Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { ListadoImprimible } from "@/components/print/ListadoImprimible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGastosTable } from "@/features/gastos/hooks/useGastosTable";
 import { listGastos } from "@/repositories/gastosRepository";
 import { createClient } from "@/lib/supabase/client";
-import { descargarCsv } from "@/lib/csv";
 import { getErrorMessage } from "@/lib/errors";
+import { formatearMoneda } from "@/lib/format";
 import type { Gasto } from "@/repositories/gastosRepository";
 import type { Proveedor } from "@/repositories/proveedoresRepository";
 
@@ -20,8 +21,17 @@ export function GastosTable({ proveedores }: { proveedores: Proveedor[] }) {
   const nombreProveedor = (id: string) => proveedores.find((p) => p.id === id)?.nombre ?? "—";
   const [exportando, setExportando] = useState(false);
   const [errorExport, setErrorExport] = useState<string | null>(null);
+  const [listado, setListado] = useState<(string | number)[][] | null>(null);
 
-  async function exportarCsv() {
+  useEffect(() => {
+    if (!listado) return;
+    const limpiar = () => setListado(null);
+    window.addEventListener("afterprint", limpiar);
+    window.print();
+    return () => window.removeEventListener("afterprint", limpiar);
+  }, [listado]);
+
+  async function exportarImprimible() {
     setErrorExport(null);
     setExportando(true);
     try {
@@ -31,18 +41,16 @@ export function GastosTable({ proveedores }: { proveedores: Proveedor[] }) {
         desde: table.desde || undefined,
         hasta: table.hasta || undefined,
       });
-      descargarCsv(
-        `gastos_${new Date().toISOString().slice(0, 10)}.csv`,
-        ["Fecha", "Proveedor", "Concepto", "Monto"],
+      setListado(
         gastos.map((g) => [
           new Date(g.fecha).toLocaleString("es-AR"),
           nombreProveedor(g.proveedor_id),
           g.concepto,
-          g.monto,
+          formatearMoneda(g.monto),
         ]),
       );
     } catch (err) {
-      setErrorExport(getErrorMessage(err, "No se pudo exportar el CSV."));
+      setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
     } finally {
       setExportando(false);
     }
@@ -64,7 +72,7 @@ export function GastosTable({ proveedores }: { proveedores: Proveedor[] }) {
       {
         accessorKey: "monto",
         header: "Monto",
-        cell: ({ row }) => `$${row.original.monto}`,
+        cell: ({ row }) => formatearMoneda(row.original.monto),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,7 +80,8 @@ export function GastosTable({ proveedores }: { proveedores: Proveedor[] }) {
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+    <div className="flex flex-col gap-4 print:hidden">
       {/* Select nativo a propósito, mismo criterio que en el resto del proyecto: no hay
           react-hook-form y este es un select simple sin necesidad del look de shadcn. */}
       <div className="flex flex-wrap items-end gap-2">
@@ -116,9 +125,9 @@ export function GastosTable({ proveedores }: { proveedores: Proveedor[] }) {
             Filtros activos
           </p>
         )}
-        <Button type="button" variant="outline" onClick={exportarCsv} disabled={exportando}>
-          <Download className="size-4" />
-          {exportando ? "Exportando..." : "Exportar CSV"}
+        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+          <Printer className="size-4" />
+          {exportando ? "Generando..." : "Exportar listado"}
         </Button>
       </div>
 
@@ -138,9 +147,17 @@ export function GastosTable({ proveedores }: { proveedores: Proveedor[] }) {
       />
 
       <p className="text-sm text-muted-foreground">
-        Total: <span className="font-medium text-foreground">${table.total.toFixed(2)}</span> (
+        Total: <span className="font-medium text-foreground">{formatearMoneda(table.total)}</span> (
         {table.count} {table.count === 1 ? "gasto" : "gastos"})
       </p>
     </div>
+    {listado && (
+      <ListadoImprimible
+        titulo="Gastos"
+        headers={["Fecha", "Proveedor", "Concepto", "Monto"]}
+        rows={listado}
+      />
+    )}
+    </>
   );
 }

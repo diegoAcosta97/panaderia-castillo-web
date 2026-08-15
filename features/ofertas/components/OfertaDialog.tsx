@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { crearOferta, actualizarOferta } from "@/features/ofertas/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Producto } from "@/repositories/productosRepository";
 import type { OfertaConItems } from "@/repositories/ofertasRepository";
 import type { TipoBeneficioOferta } from "@/types/database";
@@ -107,9 +108,9 @@ export function OfertaDialog({
 
     try {
       if (oferta) {
-        await actualizarOferta(oferta.id, input);
+        throwIfActionError(await actualizarOferta(oferta.id, input));
       } else {
-        await crearOferta(input);
+        throwIfActionError(await crearOferta(input));
         setNombre("");
         setDescripcion("");
         setValorBeneficio("");

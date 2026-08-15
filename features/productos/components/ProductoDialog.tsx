@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { crearProducto, actualizarProducto } from "@/features/productos/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Categoria } from "@/repositories/categoriasRepository";
 import type { Producto } from "@/repositories/productosRepository";
 import type { TipoVentaProducto } from "@/types/database";
@@ -88,28 +89,32 @@ export function ProductoDialog({
 
     try {
       if (producto) {
-        await actualizarProducto(producto.id, {
-          nombre,
-          categoria_id: categoriaId,
-          codigo_barras: codigoBarras,
-          precio: Number(precio),
-          costo: costo ? Number(costo) : null,
-          controla_stock: controlaStock,
-          stock_minimo: controlaStock && stockMinimo ? Number(stockMinimo) : null,
-          dias_vencimiento_default: diasVencimiento ? Number(diasVencimiento) : null,
-        });
+        throwIfActionError(
+          await actualizarProducto(producto.id, {
+            nombre,
+            categoria_id: categoriaId,
+            codigo_barras: codigoBarras,
+            precio: Number(precio),
+            costo: costo ? Number(costo) : null,
+            controla_stock: controlaStock,
+            stock_minimo: controlaStock && stockMinimo ? Number(stockMinimo) : null,
+            dias_vencimiento_default: diasVencimiento ? Number(diasVencimiento) : null,
+          }),
+        );
       } else {
-        await crearProducto({
-          nombre,
-          categoria_id: categoriaId,
-          codigo_barras: codigoBarras || null,
-          tipo_venta: tipoVenta,
-          precio: Number(precio),
-          costo: costo ? Number(costo) : null,
-          controla_stock: controlaStock,
-          stock_minimo: controlaStock && stockMinimo ? Number(stockMinimo) : null,
-          dias_vencimiento_default: diasVencimiento ? Number(diasVencimiento) : null,
-        });
+        throwIfActionError(
+          await crearProducto({
+            nombre,
+            categoria_id: categoriaId,
+            codigo_barras: codigoBarras || null,
+            tipo_venta: tipoVenta,
+            precio: Number(precio),
+            costo: costo ? Number(costo) : null,
+            controla_stock: controlaStock,
+            stock_minimo: controlaStock && stockMinimo ? Number(stockMinimo) : null,
+            dias_vencimiento_default: diasVencimiento ? Number(diasVencimiento) : null,
+          }),
+        );
         setNombre("");
         setCodigoBarras("");
         setPrecio("");

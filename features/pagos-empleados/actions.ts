@@ -9,6 +9,7 @@ import {
   crearPagoEmpleado as crearPagoEmpleadoRepo,
   type PagoEmpleado,
 } from "@/repositories/pagosEmpleadosRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 
 async function requireAdmin() {
   const session = await getServerSession();
@@ -32,38 +33,40 @@ export async function registrarPagoEmpleado(input: {
   periodoDesde?: string;
   periodoHasta?: string;
   observaciones?: string;
-}): Promise<PagoEmpleado> {
-  await requireAdmin();
+}): Promise<ActionResult<PagoEmpleado>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
 
-  const supabase = await createClient();
-  const [turno, empleado] = await Promise.all([
-    getTurnoAbierto(supabase),
-    getEmpleado(supabase, input.empleadoId),
-  ]);
-  if (!turno) throw new Error("No hay un turno de caja abierto.");
+    const supabase = await createClient();
+    const [turno, empleado] = await Promise.all([
+      getTurnoAbierto(supabase),
+      getEmpleado(supabase, input.empleadoId),
+    ]);
+    if (!turno) throw new Error("No hay un turno de caja abierto.");
 
-  let periodoDesde: string;
-  let periodoHasta: string;
-  if (empleado.tipo_cobro === "quincena") {
-    if (!input.periodoDesde || !input.periodoHasta) {
-      throw new Error("Indicá el período (desde/hasta) que cubre este pago quincenal.");
+    let periodoDesde: string;
+    let periodoHasta: string;
+    if (empleado.tipo_cobro === "quincena") {
+      if (!input.periodoDesde || !input.periodoHasta) {
+        throw new Error("Indicá el período (desde/hasta) que cubre este pago quincenal.");
+      }
+      periodoDesde = input.periodoDesde;
+      periodoHasta = input.periodoHasta;
+    } else {
+      periodoDesde = hoyISO();
+      periodoHasta = periodoDesde;
     }
-    periodoDesde = input.periodoDesde;
-    periodoHasta = input.periodoHasta;
-  } else {
-    periodoDesde = hoyISO();
-    periodoHasta = periodoDesde;
-  }
 
-  const pago = await crearPagoEmpleadoRepo(supabase, {
-    caja_turno_id: turno.id,
-    empleado_id: input.empleadoId,
-    monto: input.monto,
-    periodo_desde: periodoDesde,
-    periodo_hasta: periodoHasta,
-    observaciones: input.observaciones || null,
-  });
+    const pago = await crearPagoEmpleadoRepo(supabase, {
+      caja_turno_id: turno.id,
+      empleado_id: input.empleadoId,
+      monto: input.monto,
+      periodo_desde: periodoDesde,
+      periodo_hasta: periodoHasta,
+      observaciones: input.observaciones || null,
+    });
 
-  revalidatePath("/admin/pagos-empleados");
-  return pago;
+    revalidatePath("/admin/pagos-empleados");
+    return pago;
+  }, "No se pudo registrar el pago");
 }

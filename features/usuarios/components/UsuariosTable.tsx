@@ -15,6 +15,7 @@ import { useSession } from "@/features/auth/hooks/useSession";
 import { actualizarUsuario } from "@/features/usuarios/actions";
 import { NuevoUsuarioDialog } from "@/features/usuarios/components/NuevoUsuarioDialog";
 import { useUsuariosTable } from "@/features/usuarios/hooks/useUsuariosTable";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Perfil } from "@/repositories/perfilesRepository";
 import type { RolUsuario } from "@/types/database";
 
@@ -31,8 +32,15 @@ function RolCell({ perfil }: { perfil: Perfil }) {
 
   function handleRolChange(nuevoRol: RolUsuario | null) {
     if (!nuevoRol) return;
+    const rolAnterior = rol;
     setRol(nuevoRol);
-    startTransition(() => actualizarUsuario(perfil.id, { rol: nuevoRol }));
+    startTransition(async () => {
+      try {
+        throwIfActionError(await actualizarUsuario(perfil.id, { rol: nuevoRol }));
+      } catch {
+        setRol(rolAnterior);
+      }
+    });
   }
 
   return (
@@ -57,7 +65,13 @@ function ActivoCell({ perfil }: { perfil: Perfil }) {
 
   function handleActivoChange(nuevoActivo: boolean) {
     setActivo(nuevoActivo);
-    startTransition(() => actualizarUsuario(perfil.id, { activo: nuevoActivo }));
+    startTransition(async () => {
+      try {
+        throwIfActionError(await actualizarUsuario(perfil.id, { activo: nuevoActivo }));
+      } catch {
+        setActivo(!nuevoActivo);
+      }
+    });
   }
 
   return (

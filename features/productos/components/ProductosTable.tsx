@@ -9,6 +9,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { ProductoDialog } from "@/features/productos/components/ProductoDialog";
 import { actualizarProducto } from "@/features/productos/actions";
 import { useProductosTable } from "@/features/productos/hooks/useProductosTable";
+import { throwIfActionError } from "@/lib/actionResult";
+import { formatearMoneda } from "@/lib/format";
 import type { Categoria } from "@/repositories/categoriasRepository";
 import type { Producto } from "@/repositories/productosRepository";
 
@@ -18,7 +20,13 @@ function ActivoCell({ producto }: { producto: Producto }) {
 
   function handleActivoChange(nuevoActivo: boolean) {
     setActivo(nuevoActivo);
-    startTransition(() => actualizarProducto(producto.id, { activo: nuevoActivo }));
+    startTransition(async () => {
+      try {
+        throwIfActionError(await actualizarProducto(producto.id, { activo: nuevoActivo }));
+      } catch {
+        setActivo(!nuevoActivo);
+      }
+    });
   }
 
   return (
@@ -59,7 +67,7 @@ export function ProductosTable({
         header: "Precio",
         cell: ({ row }) => (
           <>
-            ${row.original.precio.toFixed(2)}
+            {formatearMoneda(row.original.precio)}
             {row.original.tipo_venta === "peso" ? "/kg" : ""}
           </>
         ),

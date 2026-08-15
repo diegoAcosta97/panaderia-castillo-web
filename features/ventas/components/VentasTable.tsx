@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Download } from "lucide-react";
+import { Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { ListadoImprimible } from "@/components/print/ListadoImprimible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVentasTable } from "@/features/ventas/hooks/useVentasTable";
 import { listVentas } from "@/repositories/ventasRepository";
 import { createClient } from "@/lib/supabase/client";
-import { descargarCsv } from "@/lib/csv";
 import { getErrorMessage } from "@/lib/errors";
+import { formatearMoneda } from "@/lib/format";
 import type { Venta } from "@/repositories/ventasRepository";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
 
@@ -22,12 +23,27 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   anulada: "Anulada",
 };
 
-export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
+export function VentasTable({
+  turnos,
+  basePath = "/admin/ventas",
+}: {
+  turnos: CajaTurno[];
+  basePath?: string;
+}) {
   const table = useVentasTable();
   const [exportando, setExportando] = useState(false);
   const [errorExport, setErrorExport] = useState<string | null>(null);
+  const [listado, setListado] = useState<(string | number)[][] | null>(null);
 
-  async function exportarCsv() {
+  useEffect(() => {
+    if (!listado) return;
+    const limpiar = () => setListado(null);
+    window.addEventListener("afterprint", limpiar);
+    window.print();
+    return () => window.removeEventListener("afterprint", limpiar);
+  }, [listado]);
+
+  async function exportarImprimible() {
     setErrorExport(null);
     setExportando(true);
     try {
@@ -37,21 +53,19 @@ export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
         desde: table.desde || undefined,
         hasta: table.hasta || undefined,
       });
-      descargarCsv(
-        `ventas_${new Date().toISOString().slice(0, 10)}.csv`,
-        ["N.º comprobante", "Fecha", "Subtotal", "Ofertas", "Descuentos", "Total", "Estado"],
+      setListado(
         ventas.map((v) => [
           v.numero_comprobante,
           new Date(v.fecha).toLocaleString("es-AR"),
-          v.subtotal,
-          v.total_ofertas,
-          v.total_descuentos,
-          v.total,
+          formatearMoneda(v.subtotal),
+          formatearMoneda(v.total_ofertas),
+          formatearMoneda(v.total_descuentos),
+          formatearMoneda(v.total),
           ETIQUETA_ESTADO[v.estado] ?? v.estado,
         ]),
       );
     } catch (err) {
-      setErrorExport(getErrorMessage(err, "No se pudo exportar el CSV."));
+      setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
     } finally {
       setExportando(false);
     }
@@ -68,7 +82,7 @@ export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
       {
         accessorKey: "total",
         header: "Total",
-        cell: ({ row }) => `$${row.original.total}`,
+        cell: ({ row }) => formatearMoneda(row.original.total),
       },
       {
         accessorKey: "estado",
@@ -80,7 +94,7 @@ export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
         header: "",
         cell: ({ row }) => (
           <div className="flex gap-3">
-            <Link href={`/admin/ventas/${row.original.id}`} className="text-sm underline">
+            <Link href={`${basePath}/${row.original.id}`} className="text-sm underline">
               Ver
             </Link>
             <Link
@@ -95,11 +109,12 @@ export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
         ),
       },
     ],
-    [],
+    [basePath],
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+    <div className="flex flex-col gap-4 print:hidden">
       {/* Select nativo a propósito, mismo criterio que en el resto del proyecto. */}
       <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-2">
@@ -136,9 +151,9 @@ export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
             onChange={(e) => table.setHasta(e.target.value)}
           />
         </div>
-        <Button type="button" variant="outline" onClick={exportarCsv} disabled={exportando}>
-          <Download className="size-4" />
-          {exportando ? "Exportando..." : "Exportar CSV"}
+        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+          <Printer className="size-4" />
+          {exportando ? "Generando..." : "Exportar listado"}
         </Button>
       </div>
 
@@ -157,5 +172,13 @@ export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
         emptyMessage="No hay ventas que coincidan con el filtro."
       />
     </div>
+    {listado && (
+      <ListadoImprimible
+        titulo="Ventas"
+        headers={["N.º comprobante", "Fecha", "Subtotal", "Ofertas", "Descuentos", "Total", "Estado"]}
+        rows={listado}
+      />
+    )}
+    </>
   );
 }

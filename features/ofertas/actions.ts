@@ -10,6 +10,7 @@ import {
   type Oferta,
   type OfertaInput,
 } from "@/repositories/ofertasRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 
 async function requireAdmin() {
   const session = await getServerSession();
@@ -18,24 +19,30 @@ async function requireAdmin() {
   }
 }
 
-export async function crearOferta(input: OfertaInput): Promise<Oferta> {
-  await requireAdmin();
-  const supabase = await createClient();
-  const oferta = await crearOfertaRepo(supabase, input);
-  revalidatePath("/admin/ofertas");
-  return oferta;
+export async function crearOferta(input: OfertaInput): Promise<ActionResult<Oferta>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    const oferta = await crearOfertaRepo(supabase, input);
+    revalidatePath("/admin/ofertas");
+    return oferta;
+  }, "No se pudo crear la oferta");
 }
 
-export async function actualizarOferta(id: string, input: OfertaInput) {
-  await requireAdmin();
-  const supabase = await createClient();
-  await actualizarOfertaRepo(supabase, id, input);
-  revalidatePath("/admin/ofertas");
+export async function actualizarOferta(id: string, input: OfertaInput): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    await actualizarOfertaRepo(supabase, id, input);
+    revalidatePath("/admin/ofertas");
+  }, "No se pudo actualizar la oferta");
 }
 
-export async function actualizarOfertaActivo(id: string, activo: boolean) {
-  await requireAdmin();
-  const supabase = await createClient();
-  await actualizarOfertaActivoRepo(supabase, id, activo);
-  revalidatePath("/admin/ofertas");
+export async function actualizarOfertaActivo(id: string, activo: boolean): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    await actualizarOfertaActivoRepo(supabase, id, activo);
+    revalidatePath("/admin/ofertas");
+  }, "No se pudo actualizar la oferta");
 }

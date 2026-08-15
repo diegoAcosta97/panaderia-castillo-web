@@ -8,6 +8,7 @@ import {
   cerrarTurno as cerrarTurnoRepo,
   type CajaTurno,
 } from "@/repositories/cajaTurnosRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 
 async function requireSession() {
   const session = await getServerSession();
@@ -17,25 +18,29 @@ async function requireSession() {
 export async function abrirTurno(
   montoApertura: number,
   etiquetaTurno: string,
-): Promise<CajaTurno> {
-  await requireSession();
-  const supabase = await createClient();
-  const turno = await abrirTurnoRepo(supabase, montoApertura, etiquetaTurno || null);
-  revalidatePath("/pos/caja");
-  return turno;
+): Promise<ActionResult<CajaTurno>> {
+  return ejecutarAccion(async () => {
+    await requireSession();
+    const supabase = await createClient();
+    const turno = await abrirTurnoRepo(supabase, montoApertura, etiquetaTurno || null);
+    revalidatePath("/pos/caja");
+    return turno;
+  }, "No se pudo abrir el turno");
 }
 
 export async function cerrarTurno(
   id: string,
   montoCierreDeclarado: number,
   observaciones: string,
-): Promise<CajaTurno> {
-  await requireSession();
-  const supabase = await createClient();
+): Promise<ActionResult<CajaTurno>> {
+  return ejecutarAccion(async () => {
+    await requireSession();
+    const supabase = await createClient();
 
-  const cerrado = await cerrarTurnoRepo(supabase, id, montoCierreDeclarado, observaciones || null);
+    const cerrado = await cerrarTurnoRepo(supabase, id, montoCierreDeclarado, observaciones || null);
 
-  revalidatePath("/pos/caja");
-  revalidatePath("/admin/caja");
-  return cerrado;
+    revalidatePath("/pos/caja");
+    revalidatePath("/admin/caja");
+    return cerrado;
+  }, "No se pudo cerrar el turno");
 }

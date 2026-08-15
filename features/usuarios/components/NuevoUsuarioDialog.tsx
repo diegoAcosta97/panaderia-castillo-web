@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { crearUsuario } from "@/features/usuarios/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { RolUsuario } from "@/types/database";
 
 const ETIQUETA_ROL: Record<RolUsuario, string> = {
@@ -45,7 +46,7 @@ export function NuevoUsuarioDialog({ onSaved }: { onSaved?: () => void } = {}) {
     setError(null);
 
     try {
-      await crearUsuario({ email, password, nombreCompleto, rol });
+      throwIfActionError(await crearUsuario({ email, password, nombreCompleto, rol }));
       setOpen(false);
       setEmail("");
       setPassword("");

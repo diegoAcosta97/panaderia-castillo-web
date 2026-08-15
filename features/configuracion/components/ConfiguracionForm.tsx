@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { actualizarConfiguracionNegocio } from "@/features/configuracion/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { ConfiguracionNegocio } from "@/repositories/configuracionRepository";
 
 export function ConfiguracionForm({ configuracion }: { configuracion: ConfiguracionNegocio }) {
@@ -27,12 +28,14 @@ export function ConfiguracionForm({ configuracion }: { configuracion: Configurac
     setGuardado(false);
 
     try {
-      await actualizarConfiguracionNegocio(configuracion.id, {
-        nombre_comercial: nombreComercial,
-        direccion: direccion.trim() || null,
-        telefono: telefono.trim() || null,
-        cuit: cuit.trim() || null,
-      });
+      throwIfActionError(
+        await actualizarConfiguracionNegocio(configuracion.id, {
+          nombre_comercial: nombreComercial,
+          direccion: direccion.trim() || null,
+          telefono: telefono.trim() || null,
+          cuit: cuit.trim() || null,
+        }),
+      );
       setGuardado(true);
       router.refresh();
     } catch (err) {

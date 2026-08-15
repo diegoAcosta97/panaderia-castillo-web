@@ -6,6 +6,7 @@ import { DataTable } from "@/components/data-table/DataTable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCajaTurnosTable } from "@/features/caja/hooks/useCajaTurnosTable";
+import { formatearMoneda } from "@/lib/format";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
 
 export function CajaTurnosTable() {
@@ -23,21 +24,23 @@ export function CajaTurnosTable() {
       {
         accessorKey: "monto_apertura",
         header: "Apertura",
-        cell: ({ row }) => `$${row.original.monto_apertura}`,
+        cell: ({ row }) => formatearMoneda(row.original.monto_apertura),
       },
       {
         accessorKey: "monto_cierre_declarado",
         header: "Cierre declarado",
         cell: ({ row }) =>
           row.original.monto_cierre_declarado != null
-            ? `$${row.original.monto_cierre_declarado}`
+            ? formatearMoneda(row.original.monto_cierre_declarado)
             : "—",
       },
       {
         accessorKey: "efectivo_esperado",
         header: "Esperado",
         cell: ({ row }) =>
-          row.original.efectivo_esperado != null ? `$${row.original.efectivo_esperado}` : "—",
+          row.original.efectivo_esperado != null
+            ? formatearMoneda(row.original.efectivo_esperado)
+            : "—",
       },
       {
         accessorKey: "diferencia",
@@ -50,7 +53,7 @@ export function CajaTurnosTable() {
                 : undefined
             }
           >
-            {row.original.diferencia != null ? `$${row.original.diferencia}` : "—"}
+            {row.original.diferencia != null ? formatearMoneda(row.original.diferencia) : "—"}
           </span>
         ),
       },

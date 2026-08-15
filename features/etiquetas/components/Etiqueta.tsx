@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { renderizarCodigoBarras } from "@/lib/barcode";
+import { formatearMoneda } from "@/lib/format";
 
 export function Etiqueta({
   nombre,
@@ -23,7 +24,7 @@ export function Etiqueta({
   return (
     <div className="flex flex-col items-center gap-1 break-inside-avoid border p-2 text-center">
       <p className="text-sm leading-tight font-medium">{nombre}</p>
-      <p className="text-sm font-semibold">${precio}</p>
+      <p className="text-sm font-semibold">{formatearMoneda(precio)}</p>
       {fechaVencimiento && (
         <p className="text-xs text-muted-foreground">Vence: {fechaVencimiento}</p>
       )}

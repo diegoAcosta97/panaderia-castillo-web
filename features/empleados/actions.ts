@@ -9,6 +9,7 @@ import {
   type Empleado,
   type NuevoEmpleado,
 } from "@/repositories/empleadosRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 
 async function requireAdmin() {
   const session = await getServerSession();
@@ -17,20 +18,24 @@ async function requireAdmin() {
   }
 }
 
-export async function crearEmpleado(input: NuevoEmpleado): Promise<Empleado> {
-  await requireAdmin();
-  const supabase = await createClient();
-  const empleado = await crearEmpleadoRepo(supabase, input);
-  revalidatePath("/admin/empleados");
-  return empleado;
+export async function crearEmpleado(input: NuevoEmpleado): Promise<ActionResult<Empleado>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    const empleado = await crearEmpleadoRepo(supabase, input);
+    revalidatePath("/admin/empleados");
+    return empleado;
+  }, "No se pudo crear el empleado");
 }
 
 export async function actualizarEmpleado(
   id: string,
   patch: Partial<Pick<Empleado, "nombre" | "tipo_cobro" | "activo">>,
-) {
-  await requireAdmin();
-  const supabase = await createClient();
-  await actualizarEmpleadoRepo(supabase, id, patch);
-  revalidatePath("/admin/empleados");
+): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    await actualizarEmpleadoRepo(supabase, id, patch);
+    revalidatePath("/admin/empleados");
+  }, "No se pudo actualizar el empleado");
 }

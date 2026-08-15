@@ -7,6 +7,7 @@ import { DataTable } from "@/components/data-table/DataTable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePagosEmpleadosTable } from "@/features/pagos-empleados/hooks/usePagosEmpleadosTable";
+import { formatearMoneda } from "@/lib/format";
 import type { PagoEmpleado } from "@/repositories/pagosEmpleadosRepository";
 import type { Empleado } from "@/repositories/empleadosRepository";
 
@@ -37,7 +38,7 @@ export function PagosEmpleadosTable({ empleados }: { empleados: Empleado[] }) {
       {
         accessorKey: "monto",
         header: "Monto",
-        cell: ({ row }) => `$${row.original.monto}`,
+        cell: ({ row }) => formatearMoneda(row.original.monto),
       },
       {
         accessorKey: "observaciones",
@@ -109,7 +110,7 @@ export function PagosEmpleadosTable({ empleados }: { empleados: Empleado[] }) {
       />
 
       <p className="text-sm text-muted-foreground">
-        Total: <span className="font-medium text-foreground">${table.total.toFixed(2)}</span> (
+        Total: <span className="font-medium text-foreground">{formatearMoneda(table.total)}</span> (
         {table.count} {table.count === 1 ? "pago" : "pagos"})
       </p>
     </div>

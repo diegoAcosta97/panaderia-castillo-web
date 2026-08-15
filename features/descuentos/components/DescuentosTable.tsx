@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DescuentoDialog } from "@/features/descuentos/components/DescuentoDialog";
 import { actualizarDescuentoActivo } from "@/features/descuentos/actions";
 import { useDescuentosTable } from "@/features/descuentos/hooks/useDescuentosTable";
+import { throwIfActionError } from "@/lib/actionResult";
+import { formatearMoneda } from "@/lib/format";
 import type { Producto } from "@/repositories/productosRepository";
 import type { Categoria } from "@/repositories/categoriasRepository";
 import type { DescuentoConCondiciones, DescuentoCondicion } from "@/repositories/descuentosRepository";
@@ -17,7 +19,13 @@ function ActivoCell({ descuento }: { descuento: DescuentoConCondiciones }) {
 
   function handleActivoChange(nuevoActivo: boolean) {
     setActivo(nuevoActivo);
-    startTransition(() => actualizarDescuentoActivo(descuento.id, nuevoActivo));
+    startTransition(async () => {
+      try {
+        throwIfActionError(await actualizarDescuentoActivo(descuento.id, nuevoActivo));
+      } catch {
+        setActivo(!nuevoActivo);
+      }
+    });
   }
 
   return (
@@ -39,7 +47,8 @@ export function DescuentosTable({
   const table = useDescuentosTable();
 
   function describirCondicion(c: DescuentoCondicion): string {
-    if (c.tipo_condicion === "monto_minimo") return `total ≥ $${c.monto_minimo}`;
+    if (c.tipo_condicion === "monto_minimo")
+      return `total ≥ ${formatearMoneda(c.monto_minimo ?? 0)}`;
     if (c.tipo_condicion === "producto_incluido") {
       const nombre = productos.find((p) => p.id === c.producto_id)?.nombre ?? "—";
       return `≥ ${c.cantidad_minima ?? 1} ${nombre}`;

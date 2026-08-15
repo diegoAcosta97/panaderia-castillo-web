@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { aprobarControlStock, rechazarControlStock } from "@/features/control-stock/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 
 // E11-4: solo llega acá un administrador (guard de /admin/layout.tsx + requireAdmin() dentro de
 // las dos server actions) -- aprobar dispara el ajuste real de stock (E11-3), rechazar solo deja
@@ -30,7 +31,7 @@ export function AprobarRechazarControlStock({ controlStockId }: { controlStockId
     setIsLoading(true);
     setError(null);
     try {
-      await aprobarControlStock(controlStockId);
+      throwIfActionError(await aprobarControlStock(controlStockId));
       setOpenAprobar(false);
       router.refresh();
     } catch (err) {
@@ -44,7 +45,7 @@ export function AprobarRechazarControlStock({ controlStockId }: { controlStockId
     setIsLoading(true);
     setError(null);
     try {
-      await rechazarControlStock(controlStockId);
+      throwIfActionError(await rechazarControlStock(controlStockId));
       setOpenRechazar(false);
       router.refresh();
     } catch (err) {

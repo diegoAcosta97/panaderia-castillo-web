@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { NuevaCategoriaDialog } from "@/features/productos/components/NuevaCategoriaDialog";
 import { actualizarCategoria } from "@/features/productos/actions";
 import { useCategoriasTable } from "@/features/productos/hooks/useCategoriasTable";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Categoria } from "@/repositories/categoriasRepository";
 
 function NombreCell({ categoria }: { categoria: Categoria }) {
@@ -16,7 +17,14 @@ function NombreCell({ categoria }: { categoria: Categoria }) {
 
   function handleBlur() {
     if (nombre.trim() && nombre !== categoria.nombre) {
-      startTransition(() => actualizarCategoria(categoria.id, { nombre: nombre.trim() }));
+      const nombreAnterior = categoria.nombre;
+      startTransition(async () => {
+        try {
+          throwIfActionError(await actualizarCategoria(categoria.id, { nombre: nombre.trim() }));
+        } catch {
+          setNombre(nombreAnterior);
+        }
+      });
     }
   }
 
@@ -37,7 +45,13 @@ function ActivaCell({ categoria }: { categoria: Categoria }) {
 
   function handleActivoChange(nuevoActivo: boolean) {
     setActivo(nuevoActivo);
-    startTransition(() => actualizarCategoria(categoria.id, { activo: nuevoActivo }));
+    startTransition(async () => {
+      try {
+        throwIfActionError(await actualizarCategoria(categoria.id, { activo: nuevoActivo }));
+      } catch {
+        setActivo(!nuevoActivo);
+      }
+    });
   }
 
   return (

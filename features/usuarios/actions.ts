@@ -5,6 +5,7 @@ import { getServerSession } from "@/features/auth/services/sessionService";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { updatePerfil } from "@/repositories/perfilesRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 import type { RolUsuario } from "@/types/database";
 
 async function requireAdmin() {
@@ -19,43 +20,47 @@ export async function crearUsuario(input: {
   password: string;
   nombreCompleto: string;
   rol: RolUsuario;
-}) {
-  await requireAdmin();
+}): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
 
-  const admin = createAdminClient();
+    const admin = createAdminClient();
 
-  const { data, error } = await admin.auth.admin.createUser({
-    email: input.email,
-    password: input.password,
-    email_confirm: true,
-  });
-  if (error) throw error;
+    const { data, error } = await admin.auth.admin.createUser({
+      email: input.email,
+      password: input.password,
+      email_confirm: true,
+    });
+    if (error) throw error;
 
-  const userId = data.user!.id;
+    const userId = data.user!.id;
 
-  // El trigger on_auth_user_created ya insertó el perfil (rol 'cajero' por default, sin
-  // nombre) — acá se completa.
-  const { error: updateError } = await admin
-    .from("perfiles")
-    .update({ nombre_completo: input.nombreCompleto, rol: input.rol })
-    .eq("id", userId);
-  if (updateError) throw updateError;
+    // El trigger on_auth_user_created ya insertó el perfil (rol 'cajero' por default, sin
+    // nombre) — acá se completa.
+    const { error: updateError } = await admin
+      .from("perfiles")
+      .update({ nombre_completo: input.nombreCompleto, rol: input.rol })
+      .eq("id", userId);
+    if (updateError) throw updateError;
 
-  revalidatePath("/admin/usuarios");
+    revalidatePath("/admin/usuarios");
+  }, "No se pudo crear el usuario");
 }
 
 export async function actualizarUsuario(
   id: string,
   patch: { rol?: RolUsuario; activo?: boolean; nombreCompleto?: string },
-) {
-  await requireAdmin();
+): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
 
-  const supabase = await createClient();
-  await updatePerfil(supabase, id, {
-    rol: patch.rol,
-    activo: patch.activo,
-    nombre_completo: patch.nombreCompleto,
-  });
+    const supabase = await createClient();
+    await updatePerfil(supabase, id, {
+      rol: patch.rol,
+      activo: patch.activo,
+      nombre_completo: patch.nombreCompleto,
+    });
 
-  revalidatePath("/admin/usuarios");
+    revalidatePath("/admin/usuarios");
+  }, "No se pudo actualizar el usuario");
 }

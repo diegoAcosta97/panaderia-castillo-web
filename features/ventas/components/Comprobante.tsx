@@ -6,6 +6,7 @@ import type {
   VentaMedioPago,
 } from "@/repositories/ventasRepository";
 import type { ConfiguracionNegocio } from "@/repositories/configuracionRepository";
+import { formatearMoneda } from "@/lib/format";
 
 const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
@@ -75,8 +76,8 @@ export function Comprobante({
             <tr key={r.id} className="border-b border-dashed">
               <td className="py-1">{nombreProducto(r.producto_id)}</td>
               <td className="py-1 text-right">{r.cantidad}</td>
-              <td className="py-1 text-right">${r.precio_unitario_snapshot}</td>
-              <td className="py-1 text-right">${r.subtotal}</td>
+              <td className="py-1 text-right">{formatearMoneda(r.precio_unitario_snapshot)}</td>
+              <td className="py-1 text-right">{formatearMoneda(r.subtotal)}</td>
             </tr>
           ))}
         </tbody>
@@ -85,25 +86,25 @@ export function Comprobante({
       <div className="flex flex-col gap-1 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Subtotal</span>
-          <span>${venta.subtotal}</span>
+          <span>{formatearMoneda(venta.subtotal)}</span>
         </div>
         {ofertasAplicadas.map((o) => (
           <div key={o.id} className="flex justify-between text-muted-foreground">
             <span>
               Combo: {nombreOferta(o.oferta_id)} x{o.veces_aplicada}
             </span>
-            <span>-${o.monto_beneficio}</span>
+            <span>-{formatearMoneda(o.monto_beneficio)}</span>
           </div>
         ))}
         {descuentosAplicados.map((d) => (
           <div key={d.id} className="flex justify-between text-muted-foreground">
             <span>Descuento: {nombreDescuento(d.descuento_id)}</span>
-            <span>-${d.monto_aplicado}</span>
+            <span>-{formatearMoneda(d.monto_aplicado)}</span>
           </div>
         ))}
         <div className="mt-1 flex justify-between border-t pt-1 text-base font-semibold">
           <span>Total</span>
-          <span>${venta.total}</span>
+          <span>{formatearMoneda(venta.total)}</span>
         </div>
       </div>
 
@@ -113,7 +114,7 @@ export function Comprobante({
           {mediosPago.map((m) => (
             <li key={m.id} className="flex justify-between">
               <span>{ETIQUETA_MEDIO[m.medio_pago] ?? m.medio_pago}</span>
-              <span>${m.monto}</span>
+              <span>{formatearMoneda(m.monto)}</span>
             </li>
           ))}
         </ul>

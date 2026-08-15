@@ -7,6 +7,7 @@ import {
   actualizarConfiguracionNegocio as actualizarConfiguracionNegocioRepo,
   type ConfiguracionNegocio,
 } from "@/repositories/configuracionRepository";
+import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
 
 async function requireAdmin() {
   const session = await getServerSession();
@@ -20,9 +21,11 @@ export async function actualizarConfiguracionNegocio(
   patch: Partial<
     Pick<ConfiguracionNegocio, "nombre_comercial" | "direccion" | "telefono" | "cuit">
   >,
-) {
-  await requireAdmin();
-  const supabase = await createClient();
-  await actualizarConfiguracionNegocioRepo(supabase, id, patch);
-  revalidatePath("/admin/configuracion");
+): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    await actualizarConfiguracionNegocioRepo(supabase, id, patch);
+    revalidatePath("/admin/configuracion");
+  }, "No se pudo actualizar la configuración");
 }

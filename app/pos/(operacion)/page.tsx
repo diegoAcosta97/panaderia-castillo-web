@@ -5,7 +5,7 @@ import { listDescuentos } from "@/repositories/descuentosRepository";
 import { PantallaVenta } from "@/features/ventas/components/PantallaVenta";
 
 // El layout de app/pos/(operacion) ya garantiza que haya un turno abierto para llegar acá
-// (E4-2) y ya renderiza el header (PosTopBar) — E7-4: pantalla real de armado de venta.
+// (E4-2) y ya renderiza la navegación (PosSidebar) — E7-4: pantalla real de armado de venta.
 export default async function PosHome() {
   const supabase = await createClient();
   const [turno, ofertas, descuentos] = await Promise.all([

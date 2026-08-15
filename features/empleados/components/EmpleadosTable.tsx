@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { EmpleadoDialog } from "@/features/empleados/components/EmpleadoDialog";
 import { actualizarEmpleado } from "@/features/empleados/actions";
 import { useEmpleadosTable } from "@/features/empleados/hooks/useEmpleadosTable";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Empleado } from "@/repositories/empleadosRepository";
 
 const LABEL_TIPO_COBRO: Record<Empleado["tipo_cobro"], string> = {
@@ -20,7 +21,13 @@ function ActivoCell({ empleado }: { empleado: Empleado }) {
 
   function handleActivoChange(nuevoActivo: boolean) {
     setActivo(nuevoActivo);
-    startTransition(() => actualizarEmpleado(empleado.id, { activo: nuevoActivo }));
+    startTransition(async () => {
+      try {
+        throwIfActionError(await actualizarEmpleado(empleado.id, { activo: nuevoActivo }));
+      } catch {
+        setActivo(!nuevoActivo);
+      }
+    });
   }
 
   return (

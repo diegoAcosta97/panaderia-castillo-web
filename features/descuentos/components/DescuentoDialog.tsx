@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { crearDescuento, actualizarDescuento } from "@/features/descuentos/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Producto } from "@/repositories/productosRepository";
 import type { Categoria } from "@/repositories/categoriasRepository";
 import type { DescuentoConCondiciones, CondicionInput } from "@/repositories/descuentosRepository";
@@ -122,9 +123,9 @@ export function DescuentoDialog({
 
     try {
       if (descuento) {
-        await actualizarDescuento(descuento.id, input);
+        throwIfActionError(await actualizarDescuento(descuento.id, input));
       } else {
-        await crearDescuento(input);
+        throwIfActionError(await crearDescuento(input));
         setNombre("");
         setValorEfecto("");
         setFechaInicio("");

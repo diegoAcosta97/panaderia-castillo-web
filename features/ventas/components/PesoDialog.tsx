@@ -13,8 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Producto } from "@/repositories/productosRepository";
+import { formatearMoneda } from "@/lib/format";
 
-// RF-1.2/E7-4: un producto "por peso" pide el peso antes de agregarse al carrito.
+type Modo = "peso" | "monto";
+
+// RF-1.2/E7-4: un producto "por peso" pide el peso antes de agregarse al carrito. También se
+// puede cargar por monto ("$1000 de pan") -- el peso se calcula dividiendo por producto.precio
+// (precio es por kg), pero lo que siempre se propaga hacia afuera (onConfirmar) es el peso en kg.
 export function PesoDialog({
   producto,
   onConfirmar,
@@ -24,12 +29,18 @@ export function PesoDialog({
   onConfirmar: (peso: number) => void;
   onCancelar: () => void;
 }) {
+  const [modo, setModo] = useState<Modo>("peso");
   const [peso, setPeso] = useState("");
+  const [monto, setMonto] = useState("");
+
+  const pesoCalculado =
+    modo === "monto"
+      ? Math.round(((Number(monto) || 0) / producto.precio) * 100) / 100
+      : Number(peso);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const valor = Number(peso);
-    if (valor > 0) onConfirmar(valor);
+    if (pesoCalculado > 0) onConfirmar(pesoCalculado);
   }
 
   return (
@@ -37,21 +48,61 @@ export function PesoDialog({
       <DialogContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <DialogHeader>
-            <DialogTitle>Peso de {producto.nombre}</DialogTitle>
+            <DialogTitle>{producto.nombre}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-2">
-            <Label htmlFor="peso-kg">Peso (kg)</Label>
-            <Input
-              id="peso-kg"
-              type="number"
-              min="0.001"
-              step="0.001"
-              autoFocus
-              required
-              value={peso}
-              onChange={(e) => setPeso(e.target.value)}
-            />
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={modo === "peso" ? "default" : "outline"}
+              onClick={() => setModo("peso")}
+            >
+              Por peso
+            </Button>
+            <Button
+              type="button"
+              variant={modo === "monto" ? "default" : "outline"}
+              onClick={() => setModo("monto")}
+            >
+              Por monto
+            </Button>
           </div>
+
+          {modo === "peso" ? (
+            <div className="grid gap-2">
+              <Label htmlFor="peso-kg">Peso (kg)</Label>
+              <Input
+                id="peso-kg"
+                type="number"
+                min="0.01"
+                step="0.01"
+                autoFocus
+                required
+                value={peso}
+                onChange={(e) => setPeso(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label htmlFor="monto-pesado">Monto ($)</Label>
+              <Input
+                id="monto-pesado"
+                type="number"
+                min="0.01"
+                step="0.01"
+                autoFocus
+                required
+                value={monto}
+                onChange={(e) => setMonto(e.target.value)}
+              />
+              {pesoCalculado > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  ≈ {pesoCalculado.toFixed(2)} kg (a {formatearMoneda(producto.precio)}/kg)
+                </p>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="submit">
               <Plus className="size-4" />

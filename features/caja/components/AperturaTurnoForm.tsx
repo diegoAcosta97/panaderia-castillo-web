@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { abrirTurno } from "@/features/caja/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 
 export function AperturaTurnoForm() {
   const [monto, setMonto] = useState("");
@@ -22,7 +23,7 @@ export function AperturaTurnoForm() {
     setError(null);
 
     try {
-      await abrirTurno(Number(monto), etiqueta);
+      throwIfActionError(await abrirTurno(Number(monto), etiqueta));
       router.push("/pos");
       router.refresh();
     } catch (err) {

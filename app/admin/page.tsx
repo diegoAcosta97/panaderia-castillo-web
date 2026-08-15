@@ -9,15 +9,12 @@ import { sumaGastosPorTurno } from "@/repositories/gastosRepository";
 import { sumaPagosEmpleadosPorTurno } from "@/repositories/pagosEmpleadosRepository";
 import { sumaSenasPorTurno } from "@/repositories/pedidosEncargoRepository";
 import { listProductosBajoStock } from "@/repositories/productosRepository";
+import { formatearMoneda } from "@/lib/format";
 
 function fechaISO(offsetDias = 0): string {
   const d = new Date();
   d.setDate(d.getDate() + offsetDias);
   return d.toISOString().slice(0, 10);
-}
-
-function formatoMoneda(monto: number): string {
-  return `$${monto.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default async function AdminHome() {
@@ -70,7 +67,7 @@ export default async function AdminHome() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">{formatoMoneda(resumenHoy.totalVentas)}</p>
+            <p className="text-2xl font-semibold">{formatearMoneda(resumenHoy.totalVentas)}</p>
             <p className="text-sm text-muted-foreground">
               {resumenHoy.cantidadVentas} {resumenHoy.cantidadVentas === 1 ? "venta" : "ventas"}
             </p>
@@ -85,7 +82,7 @@ export default async function AdminHome() {
                 <TrendingDown className="size-3" />
               )}
               {deltaVentas >= 0 ? "+" : ""}
-              {formatoMoneda(deltaVentas)} vs. ayer
+              {formatearMoneda(deltaVentas)} vs. ayer
               {deltaVentasPct !== null && ` (${deltaVentasPct >= 0 ? "+" : ""}${deltaVentasPct.toFixed(0)}%)`}
             </p>
           </CardContent>
@@ -101,7 +98,7 @@ export default async function AdminHome() {
           <CardContent>
             {turnoAbierto ? (
               <>
-                <p className="text-2xl font-semibold">{formatoMoneda(efectivoEsperado ?? 0)}</p>
+                <p className="text-2xl font-semibold">{formatearMoneda(efectivoEsperado ?? 0)}</p>
                 <p className="text-sm text-muted-foreground">
                   Turno abierto desde {new Date(turnoAbierto.fecha_apertura).toLocaleTimeString("es-AR")}
                 </p>
@@ -153,7 +150,7 @@ export default async function AdminHome() {
           <CardContent>
             {resumenHoy.renglonesConCosto > 0 ? (
               <>
-                <p className="text-2xl font-semibold">{formatoMoneda(resumenHoy.margenBruto)}</p>
+                <p className="text-2xl font-semibold">{formatearMoneda(resumenHoy.margenBruto)}</p>
                 {resumenHoy.renglonesSinCosto > 0 && (
                   <p className="text-xs text-muted-foreground">
                     Cobertura parcial: {resumenHoy.renglonesSinCosto} renglón(es) sin costo cargado.
@@ -184,7 +181,7 @@ export default async function AdminHome() {
                     {i + 1}. {p.nombre}
                   </span>
                   <span className="shrink-0 text-muted-foreground">
-                    {p.cantidad} un. — {formatoMoneda(p.monto)}
+                    {p.cantidad} un. — {formatearMoneda(p.monto)}
                   </span>
                 </li>
               ))}

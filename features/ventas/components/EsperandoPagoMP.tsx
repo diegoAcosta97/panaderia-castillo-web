@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { cancelarPagoMPPendiente } from "@/features/mercadopago/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 
 const INTERVALO_POLLING_MS = 3000;
 
@@ -61,7 +62,7 @@ export function EsperandoPagoMP({
     setCancelando(true);
     setError(null);
     try {
-      await cancelarPagoMPPendiente(ventaId);
+      throwIfActionError(await cancelarPagoMPPendiente(ventaId));
       onCancelar();
     } catch (err) {
       setError(getErrorMessage(err, "No se pudo cancelar el cobro"));

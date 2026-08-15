@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { registrarPagoEmpleado } from "@/features/pagos-empleados/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Empleado } from "@/repositories/empleadosRepository";
 
 export function NuevoPagoEmpleadoForm({ empleados }: { empleados: Empleado[] }) {
@@ -36,13 +37,15 @@ export function NuevoPagoEmpleadoForm({ empleados }: { empleados: Empleado[] }) 
     setError(null);
 
     try {
-      await registrarPagoEmpleado({
-        empleadoId,
-        monto: Number(monto),
-        periodoDesde: esQuincena ? periodoDesde : undefined,
-        periodoHasta: esQuincena ? periodoHasta : undefined,
-        observaciones: observaciones || undefined,
-      });
+      throwIfActionError(
+        await registrarPagoEmpleado({
+          empleadoId,
+          monto: Number(monto),
+          periodoDesde: esQuincena ? periodoDesde : undefined,
+          periodoHasta: esQuincena ? periodoHasta : undefined,
+          observaciones: observaciones || undefined,
+        }),
+      );
       setMonto("");
       setPeriodoDesde("");
       setPeriodoHasta("");

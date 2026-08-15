@@ -16,6 +16,7 @@ import type { PedidoCargado } from "@/features/pedidos-encargo/components/Cargar
 import type { Producto } from "@/repositories/productosRepository";
 import type { OfertaConItems } from "@/repositories/ofertasRepository";
 import type { DescuentoConCondiciones } from "@/repositories/descuentosRepository";
+import { formatearMoneda } from "@/lib/format";
 
 export function PantallaVenta({
   cajaTurnoId,
@@ -113,7 +114,8 @@ export function PantallaVenta({
         <p className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
           <span>
             Pedido cargado: <span className="font-medium">{pedidoActivo.clienteNombre}</span>
-            {pedidoActivo.senaTotal > 0 && ` — seña ya pagada: $${pedidoActivo.senaTotal.toFixed(2)}`}
+            {pedidoActivo.senaTotal > 0 &&
+              ` — seña ya pagada: ${formatearMoneda(pedidoActivo.senaTotal)}`}
           </span>
           <Button type="button" variant="outline" size="sm" onClick={handleQuitarPedido}>
             Quitar

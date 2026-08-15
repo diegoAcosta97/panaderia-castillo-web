@@ -11,6 +11,7 @@ import { BotonImprimir } from "@/features/etiquetas/components/BotonImprimir";
 import { useGenerarLote } from "@/features/etiquetas/hooks/useGenerarLote";
 import type { Producto } from "@/repositories/productosRepository";
 import type { ResultadoGenerarLote } from "@/repositories/etiquetasRepository";
+import { formatearMoneda } from "@/lib/format";
 
 function fechaPorDefecto(dias: number | null): string {
   if (!dias) return "";
@@ -71,7 +72,8 @@ export function PantallaEtiquetas() {
       {producto && (
         <div className="flex max-w-sm flex-col gap-4">
           <p className="text-sm">
-            Producto: <span className="font-medium">{producto.nombre}</span> (${producto.precio})
+            Producto: <span className="font-medium">{producto.nombre}</span> (
+            {formatearMoneda(producto.precio)})
           </p>
           <div className="grid gap-2">
             <Label htmlFor="cantidad">Cantidad de etiquetas</Label>

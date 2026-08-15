@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { crearProveedor, actualizarProveedor } from "@/features/proveedores/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 import type { Proveedor } from "@/repositories/proveedoresRepository";
 
 export function ProveedorDialog({
@@ -49,9 +50,9 @@ export function ProveedorDialog({
 
     try {
       if (proveedor) {
-        await actualizarProveedor(proveedor.id, patch);
+        throwIfActionError(await actualizarProveedor(proveedor.id, patch));
       } else {
-        await crearProveedor(patch);
+        throwIfActionError(await crearProveedor(patch));
         setNombre("");
         setCuit("");
         setTelefono("");

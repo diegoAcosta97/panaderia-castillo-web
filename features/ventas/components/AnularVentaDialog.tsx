@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { anularVenta } from "@/features/ventas/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 
 export function AnularVentaDialog({ ventaId }: { ventaId: string }) {
   const [open, setOpen] = useState(false);
@@ -31,7 +32,7 @@ export function AnularVentaDialog({ ventaId }: { ventaId: string }) {
     setError(null);
 
     try {
-      await anularVenta(ventaId, motivo);
+      throwIfActionError(await anularVenta(ventaId, motivo));
       setOpen(false);
       router.refresh();
     } catch (err) {

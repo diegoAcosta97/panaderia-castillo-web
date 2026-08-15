@@ -12,7 +12,7 @@ import { listOfertas } from "@/repositories/ofertasRepository";
 import { listDescuentos } from "@/repositories/descuentosRepository";
 import { VentaDetalle } from "@/features/ventas/components/VentaDetalle";
 
-export default async function VentaDetallePage({
+export default async function VentaDetalleCajeroPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -50,7 +50,7 @@ export default async function VentaDetallePage({
       nombreProducto={nombreProducto}
       nombreOferta={nombreOferta}
       nombreDescuento={nombreDescuento}
-      puedeAnular
+      puedeAnular={false}
     />
   );
 }

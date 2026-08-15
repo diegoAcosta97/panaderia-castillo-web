@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { crearCategoria } from "@/features/productos/actions";
 import { getErrorMessage } from "@/lib/errors";
+import { throwIfActionError } from "@/lib/actionResult";
 
 export function NuevaCategoriaDialog({ onSaved }: { onSaved?: () => void } = {}) {
   const [open, setOpen] = useState(false);
@@ -28,7 +29,7 @@ export function NuevaCategoriaDialog({ onSaved }: { onSaved?: () => void } = {})
     setError(null);
 
     try {
-      await crearCategoria(nombre);
+      throwIfActionError(await crearCategoria(nombre));
       setOpen(false);
       setNombre("");
       onSaved?.();

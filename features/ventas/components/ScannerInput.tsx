@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useBuscarProducto } from "@/features/productos/hooks/useBuscarProducto";
 import type { Producto } from "@/repositories/productosRepository";
+import { formatearMoneda } from "@/lib/format";
 
 // E7-4: un único input cumple dos roles — recibe el lector de código de barras USB (que
 // escribe rápido y termina con Enter, como si fuera un teclado) y sirve de búsqueda manual por
@@ -62,9 +63,6 @@ export function ScannerInput({
         value={valor}
         onChange={(e) => setValor(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={() => {
-          if (!disabled) setTimeout(() => inputRef.current?.focus(), 50);
-        }}
       />
       {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
       {resultados.length > 0 && valor.trim().length >= 2 && (
@@ -76,7 +74,7 @@ export function ScannerInput({
                 className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
                 onClick={() => handleSeleccionarSugerencia(p)}
               >
-                {p.nombre} — ${p.precio}
+                {p.nombre} — {formatearMoneda(p.precio)}
                 {p.tipo_venta === "peso" ? "/kg" : ""}
               </button>
             </li>
