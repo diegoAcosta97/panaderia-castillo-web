@@ -53,6 +53,29 @@ export async function registrarConsumoInterno(
   return data as unknown as ResultadoMovimientoStock;
 }
 
+// Sibling sin paginar de listMovimientosStockPaginated, mismos filtros -- usado para exportar a
+// CSV el conjunto filtrado completo (no solo la página visible).
+export async function listMovimientosStock(
+  supabase: SupabaseClient<Database>,
+  filtros?: {
+    tipo?: TipoMovimientoStock;
+    productoId?: string;
+    desde?: string;
+    hasta?: string;
+  },
+): Promise<MovimientoStock[]> {
+  let query = supabase.from("movimientos_stock").select("*").order("fecha", { ascending: false });
+
+  if (filtros?.tipo) query = query.eq("tipo", filtros.tipo);
+  if (filtros?.productoId) query = query.eq("producto_id", filtros.productoId);
+  if (filtros?.desde) query = query.gte("fecha", filtros.desde);
+  if (filtros?.hasta) query = query.lte("fecha", `${filtros.hasta}T23:59:59`);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
 export interface ListMovimientosStockPaginadoParams {
   page: number;
   pageSize: number;

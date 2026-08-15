@@ -21,7 +21,7 @@ export type TipoBeneficioOferta = "precio_fijo" | "descuento_porcentaje" | "desc
 export type TipoEfectoDescuento = "porcentaje" | "monto_fijo";
 export type TipoCondicionDescuento = "monto_minimo" | "producto_incluido" | "categoria_incluida";
 export type EstadoVenta = "pendiente_pago" | "completada" | "anulada";
-export type MedioPago = "efectivo" | "mercado_pago";
+export type MedioPago = "efectivo" | "mercado_pago" | "sena_pedido";
 export type EstadoPagoMedio = "pendiente" | "acreditado" | "rechazado";
 export type EstadoControlStock =
   | "en_progreso"
@@ -29,6 +29,7 @@ export type EstadoControlStock =
   | "aprobado"
   | "rechazado";
 export type TipoCobroEmpleado = "por_dia" | "quincena";
+export type EstadoPedidoEncargo = "pendiente" | "entregado" | "cancelado";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -121,6 +122,7 @@ export interface Database {
           codigo_barras: string;
           tipo_venta: TipoVentaProducto;
           precio: number;
+          costo: number | null;
           controla_stock: boolean;
           stock_actual: number | null;
           stock_minimo: number | null;
@@ -136,6 +138,7 @@ export interface Database {
           codigo_barras: string;
           tipo_venta: TipoVentaProducto;
           precio: number;
+          costo?: number | null;
           controla_stock?: boolean;
           stock_actual?: number | null;
           stock_minimo?: number | null;
@@ -151,6 +154,7 @@ export interface Database {
           codigo_barras?: string;
           tipo_venta?: TipoVentaProducto;
           precio?: number;
+          costo?: number | null;
           controla_stock?: boolean;
           stock_actual?: number | null;
           stock_minimo?: number | null;
@@ -459,6 +463,90 @@ export interface Database {
         };
         Relationships: [];
       };
+      pedidos_encargo: {
+        Row: {
+          id: string;
+          cliente_nombre: string;
+          cliente_telefono: string | null;
+          fecha_entrega: string;
+          estado: EstadoPedidoEncargo;
+          notas: string | null;
+          usuario_id: string;
+          venta_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          cliente_nombre: string;
+          cliente_telefono?: string | null;
+          fecha_entrega: string;
+          estado?: EstadoPedidoEncargo;
+          notas?: string | null;
+          usuario_id: string;
+          venta_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          cliente_nombre?: string;
+          cliente_telefono?: string | null;
+          fecha_entrega?: string;
+          estado?: EstadoPedidoEncargo;
+          notas?: string | null;
+          usuario_id?: string;
+          venta_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      pedido_encargo_items: {
+        Row: {
+          id: string;
+          pedido_id: string;
+          producto_id: string;
+          cantidad: number;
+        };
+        Insert: {
+          id?: string;
+          pedido_id: string;
+          producto_id: string;
+          cantidad: number;
+        };
+        Update: {
+          id?: string;
+          pedido_id?: string;
+          producto_id?: string;
+          cantidad?: number;
+        };
+        Relationships: [];
+      };
+      senas_pedidos: {
+        Row: {
+          id: string;
+          pedido_id: string;
+          caja_turno_id: string;
+          monto: number;
+          usuario_id: string;
+          fecha: string;
+        };
+        Insert: {
+          id?: string;
+          pedido_id: string;
+          caja_turno_id: string;
+          monto: number;
+          usuario_id: string;
+          fecha?: string;
+        };
+        Update: {
+          id?: string;
+          pedido_id?: string;
+          caja_turno_id?: string;
+          monto?: number;
+          usuario_id?: string;
+          fecha?: string;
+        };
+        Relationships: [];
+      };
       ofertas: {
         Row: {
           id: string;
@@ -634,6 +722,7 @@ export interface Database {
           producto_id: string;
           cantidad: number;
           precio_unitario_snapshot: number;
+          costo_unitario_snapshot: number | null;
           subtotal: number;
         };
         Insert: {
@@ -642,6 +731,7 @@ export interface Database {
           producto_id: string;
           cantidad: number;
           precio_unitario_snapshot: number;
+          costo_unitario_snapshot?: number | null;
           subtotal: number;
         };
         Update: {
@@ -650,6 +740,7 @@ export interface Database {
           producto_id?: string;
           cantidad?: number;
           precio_unitario_snapshot?: number;
+          costo_unitario_snapshot?: number | null;
           subtotal?: number;
         };
         Relationships: [];
@@ -832,6 +923,23 @@ export interface Database {
         };
         Returns: Json;
       };
+      crear_pedido_encargo: {
+        Args: {
+          p_cliente_nombre: string;
+          p_cliente_telefono: string | null;
+          p_fecha_entrega: string;
+          p_notas: string | null;
+          p_items: Json;
+        };
+        Returns: string;
+      };
+      registrar_sena_pedido: {
+        Args: {
+          p_pedido_id: string;
+          p_monto: number;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       rol_usuario: RolUsuario;
@@ -845,6 +953,7 @@ export interface Database {
       medio_pago: MedioPago;
       estado_pago_medio: EstadoPagoMedio;
       estado_control_stock: EstadoControlStock;
+      estado_pedido_encargo: EstadoPedidoEncargo;
     };
     CompositeTypes: Record<never, never>;
   };

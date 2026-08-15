@@ -57,6 +57,7 @@ export async function actualizarProducto(
       | "categoria_id"
       | "codigo_barras"
       | "precio"
+      | "costo"
       | "controla_stock"
       | "stock_minimo"
       | "dias_vencimiento_default"

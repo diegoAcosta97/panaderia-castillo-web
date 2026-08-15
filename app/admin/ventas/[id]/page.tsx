@@ -24,6 +24,7 @@ import { AnularVentaDialog } from "@/features/ventas/components/AnularVentaDialo
 const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
   mercado_pago: "Mercado Pago",
+  sena_pedido: "Seña (pedido por encargo)",
 };
 
 export default async function VentaDetallePage({

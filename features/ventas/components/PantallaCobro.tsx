@@ -9,6 +9,8 @@ import { ResumenVenta } from "@/features/ventas/components/ResumenVenta";
 import { EsperandoPagoMP } from "@/features/ventas/components/EsperandoPagoMP";
 import { useCobro } from "@/features/ventas/hooks/useCobro";
 import { generarQrParaVenta, cancelarPagoMPPendiente } from "@/features/mercadopago/actions";
+import { marcarPedidoEntregado } from "@/repositories/pedidosEncargoRepository";
+import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
 import type { RenglonCarritoUI } from "@/features/ventas/hooks/useCarrito";
 import type { useResumenVenta } from "@/features/ventas/hooks/useResumenVenta";
@@ -20,36 +22,52 @@ export function PantallaCobro({
   cajaTurnoId,
   renglones,
   resumen,
+  pedidoActivo,
   onCancelar,
   onConfirmada,
 }: {
   cajaTurnoId: string;
   renglones: RenglonCarritoUI[];
   resumen: ReturnType<typeof useResumenVenta>;
+  pedidoActivo?: { id: string; clienteNombre: string; senaTotal: number } | null;
   onCancelar: () => void;
   onConfirmada: (ventaId: string, numeroComprobante: number) => void;
 }) {
+  // Si viene de un pedido por encargo con seña, esa plata ya entró en un turno anterior -- lo
+  // que efectivo/Mercado Pago tienen que cubrir ahora es el saldo, no el total del pedido.
+  const senaTotal = pedidoActivo?.senaTotal ?? 0;
+  const totalACobrar = Math.max(0, resumen.total - senaTotal);
+
   const [formaPago, setFormaPago] = useState<FormaPago>("efectivo");
-  const [montoEfectivo, setMontoEfectivo] = useState(resumen.total.toFixed(2));
+  const [montoEfectivo, setMontoEfectivo] = useState(totalACobrar.toFixed(2));
   const [esperandoPago, setEsperandoPago] = useState<{ ventaId: string } | null>(null);
   const [errorQr, setErrorQr] = useState<string | null>(null);
   const [generandoQr, setGenerandoQr] = useState(false);
   const { cobrar, error, isLoading } = useCobro();
 
-  const total = resumen.total;
+  const total = totalACobrar;
   const efectivo =
     formaPago === "efectivo" ? total : formaPago === "combinado" ? Number(montoEfectivo) || 0 : 0;
   const mercadoPago = Math.round((total - efectivo) * 100) / 100;
-  const habilitado = efectivo > 0 || mercadoPago > 0;
+  const habilitado = efectivo > 0 || mercadoPago > 0 || total <= 0;
 
   async function handleConfirmar() {
     setErrorQr(null);
     const mediosPago: { medio_pago: MedioPago; monto: number }[] = [];
+    if (senaTotal > 0) mediosPago.push({ medio_pago: "sena_pedido", monto: senaTotal });
     if (efectivo > 0) mediosPago.push({ medio_pago: "efectivo", monto: efectivo });
     if (mercadoPago > 0) mediosPago.push({ medio_pago: "mercado_pago", monto: mercadoPago });
 
     const resultado = await cobrar({ cajaTurnoId, renglones, resumen, mediosPago });
     if (!resultado) return;
+
+    if (pedidoActivo) {
+      // No bloquea la confirmación de la venta si esto falla -- ya se cobró y se descontó
+      // stock, un pedido que quedó "pendiente" con una venta ya hecha es reconciliable a mano.
+      marcarPedidoEntregado(createClient(), pedidoActivo.id, resultado.venta_id).catch((err) =>
+        console.error("No se pudo marcar el pedido como entregado:", err),
+      );
+    }
 
     if (resultado.estado === "completada") {
       onConfirmada(resultado.venta_id, resultado.numero_comprobante);
@@ -93,6 +111,12 @@ export function PantallaCobro({
     <div className="flex flex-col gap-4 p-6">
       <h1 className="text-2xl font-semibold">Cobrar</h1>
       <ResumenVenta resumen={resumen} />
+      {senaTotal > 0 && (
+        <p className="flex justify-between text-sm text-muted-foreground">
+          <span>Seña ya pagada ({pedidoActivo?.clienteNombre})</span>
+          <span>-${senaTotal.toFixed(2)}</span>
+        </p>
+      )}
 
       <div className="flex gap-2">
         <Button

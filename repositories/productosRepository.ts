@@ -11,6 +11,7 @@ export interface NuevoProducto {
   codigo_barras?: string | null;
   tipo_venta: TipoVentaProducto;
   precio: number;
+  costo?: number | null;
   controla_stock: boolean;
   stock_minimo?: number | null;
   dias_vencimiento_default?: number | null;
@@ -94,6 +95,18 @@ export async function buscarPorCodigoBarras(
   return data;
 }
 
+// Despacho de un pedido por encargo (features/pedidos-encargo): trae los productos vigentes de
+// una lista de ids en una sola query, para cargarlos al carrito con el precio del día.
+export async function getProductosByIds(
+  supabase: SupabaseClient<Database>,
+  ids: string[],
+): Promise<Producto[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase.from("productos").select("*").in("id", ids);
+  if (error) throw error;
+  return data;
+}
+
 export async function buscarPorNombre(
   supabase: SupabaseClient<Database>,
   texto: string,
@@ -121,6 +134,7 @@ export async function crearProducto(
     nombre: input.nombre,
     tipo_venta: input.tipo_venta,
     precio: input.precio,
+    costo: input.costo ?? null,
     controla_stock: input.controla_stock,
     stock_actual: stockActualInicial,
     stock_minimo: input.controla_stock ? (input.stock_minimo ?? null) : null,
@@ -165,6 +179,7 @@ export async function actualizarProducto(
       | "categoria_id"
       | "codigo_barras"
       | "precio"
+      | "costo"
       | "controla_stock"
       | "stock_minimo"
       | "dias_vencimiento_default"

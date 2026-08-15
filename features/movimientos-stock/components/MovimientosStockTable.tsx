@@ -1,17 +1,23 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Filter } from "lucide-react";
+import { Filter, Download } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMovimientosStockTable } from "@/features/movimientos-stock/hooks/useMovimientosStockTable";
 import { TIPO_MOVIMIENTO_LABELS, TIPOS_MOVIMIENTO_ORDENADOS } from "@/features/movimientos-stock/lib/tipoMovimientoLabels";
+import { listMovimientosStock } from "@/repositories/movimientosStockRepository";
+import { createClient } from "@/lib/supabase/client";
+import { descargarCsv } from "@/lib/csv";
+import { getErrorMessage } from "@/lib/errors";
 import type { MovimientoStock } from "@/repositories/movimientosStockRepository";
 import type { Producto } from "@/repositories/productosRepository";
 import type { Empleado } from "@/repositories/empleadosRepository";
 import type { Perfil } from "@/repositories/perfilesRepository";
+import type { TipoMovimientoStock } from "@/types/database";
 
 export function MovimientosStockTable({
   productos,
@@ -30,6 +36,40 @@ export function MovimientosStockTable({
     const perfil = perfiles.find((p) => p.id === id);
     return perfil?.nombre_completo || perfil?.email || "—";
   };
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
+
+  async function exportarCsv() {
+    setErrorExport(null);
+    setExportando(true);
+    try {
+      const supabase = createClient();
+      const movimientos = await listMovimientosStock(supabase, {
+        tipo: table.tipo === table.todosValue ? undefined : (table.tipo as TipoMovimientoStock),
+        productoId: table.productoId || undefined,
+        desde: table.desde || undefined,
+        hasta: table.hasta || undefined,
+      });
+      descargarCsv(
+        `movimientos_stock_${new Date().toISOString().slice(0, 10)}.csv`,
+        ["Fecha", "Tipo", "Producto", "Cantidad", "Stock resultante", "Motivo", "Empleado", "Registrado por"],
+        movimientos.map((m) => [
+          new Date(m.fecha).toLocaleString("es-AR"),
+          TIPO_MOVIMIENTO_LABELS[m.tipo],
+          nombreProducto(m.producto_id),
+          m.cantidad,
+          m.stock_resultante,
+          m.motivo || "",
+          nombreEmpleado(m.empleado_id),
+          nombreUsuario(m.usuario_id),
+        ]),
+      );
+    } catch (err) {
+      setErrorExport(getErrorMessage(err, "No se pudo exportar el CSV."));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const columns = useMemo<ColumnDef<MovimientoStock, unknown>[]>(
     () => [
@@ -138,7 +178,13 @@ export function MovimientosStockTable({
             Filtros activos
           </p>
         )}
+        <Button type="button" variant="outline" onClick={exportarCsv} disabled={exportando}>
+          <Download className="size-4" />
+          {exportando ? "Exportando..." : "Exportar CSV"}
+        </Button>
       </div>
+
+      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
 
       <DataTable
         columns={columns}

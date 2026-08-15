@@ -3,6 +3,7 @@ import type { Database } from "@/types/database";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
 import { sumaGastosPorTurno } from "@/repositories/gastosRepository";
 import { sumaPagosEmpleadosPorTurno } from "@/repositories/pagosEmpleadosRepository";
+import { sumaSenasPorTurno } from "@/repositories/pedidosEncargoRepository";
 import { sumaVentasEfectivoPorTurno } from "@/repositories/ventasRepository";
 
 // RF-5.4: efectivo_esperado = apertura + ventas en efectivo del turno − gastos en efectivo del
@@ -17,18 +18,22 @@ import { sumaVentasEfectivoPorTurno } from "@/repositories/ventasRepository";
 // contar ninguna venta en efectivo. Corregido acá.
 //
 // Pagos a empleados: descuentan de caja igual que los gastos (mismo criterio aplicado por
-// analogía a RF-6.3). Debe coincidir exactamente con la fórmula que recalcula
-// `cerrar_turno` server-side (20260810100010_pagos_empleados_en_cierre_turno.sql) -- este cálculo
-// es solo el preview antes de confirmar.
+// analogía a RF-6.3). Señas de pedidos por encargo: suman, es efectivo real que entró en este
+// turno. Debe coincidir exactamente con la fórmula que recalcula `cerrar_turno` server-side
+// (20260815100040_cerrar_turno_fix_pagos_empleados_y_senas.sql) -- este cálculo es solo el
+// preview antes de confirmar.
 export async function calcularEfectivoEsperado(
   supabase: SupabaseClient<Database>,
   turno: CajaTurno,
 ): Promise<number> {
-  const [ventasEfectivo, gastosEfectivo, pagosEmpleados] = await Promise.all([
+  const [ventasEfectivo, gastosEfectivo, pagosEmpleados, senasEfectivo] = await Promise.all([
     sumaVentasEfectivoPorTurno(supabase, turno.id),
     sumaGastosPorTurno(supabase, turno.id),
     sumaPagosEmpleadosPorTurno(supabase, turno.id),
+    sumaSenasPorTurno(supabase, turno.id),
   ]);
 
-  return Number(turno.monto_apertura) + ventasEfectivo - gastosEfectivo - pagosEmpleados;
+  return (
+    Number(turno.monto_apertura) + ventasEfectivo + senasEfectivo - gastosEfectivo - pagosEmpleados
+  );
 }

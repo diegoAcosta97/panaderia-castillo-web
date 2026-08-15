@@ -255,6 +255,119 @@ export async function listVentas(
   return data;
 }
 
+export interface ResumenVentasRango {
+  totalVentas: number;
+  cantidadVentas: number;
+  margenBruto: number;
+  renglonesConCosto: number;
+  renglonesSinCosto: number;
+}
+
+// Dashboard (/admin): total vendido + margen bruto de un rango de fechas, agregado en JS a
+// partir de listVentas + renglones_venta -- mismo criterio que sumaVentasEfectivoPorTurno (sin
+// vista/RPC nueva a este volumen). Solo cuenta ventas completada, igual que el resto del
+// sistema. El margen es "parcial" si hay renglones sin costo_unitario_snapshot cargado (producto
+// sin costo al momento de la venta) -- se informa la cobertura, no se oculta.
+export async function resumenVentasPorRango(
+  supabase: SupabaseClient<Database>,
+  { desde, hasta }: { desde: string; hasta: string },
+): Promise<ResumenVentasRango> {
+  const ventas = await listVentas(supabase, { desde, hasta });
+  const completadas = ventas.filter((v) => v.estado === "completada");
+  const totalVentas = completadas.reduce((acc, v) => acc + Number(v.total), 0);
+
+  if (completadas.length === 0) {
+    return {
+      totalVentas: 0,
+      cantidadVentas: 0,
+      margenBruto: 0,
+      renglonesConCosto: 0,
+      renglonesSinCosto: 0,
+    };
+  }
+
+  const { data: renglones, error } = await supabase
+    .from("renglones_venta")
+    .select("cantidad, subtotal, costo_unitario_snapshot")
+    .in(
+      "venta_id",
+      completadas.map((v) => v.id),
+    );
+  if (error) throw error;
+
+  let margenBruto = 0;
+  let renglonesConCosto = 0;
+  let renglonesSinCosto = 0;
+  for (const r of renglones) {
+    if (r.costo_unitario_snapshot != null) {
+      margenBruto += Number(r.subtotal) - Number(r.costo_unitario_snapshot) * Number(r.cantidad);
+      renglonesConCosto++;
+    } else {
+      renglonesSinCosto++;
+    }
+  }
+
+  return {
+    totalVentas,
+    cantidadVentas: completadas.length,
+    margenBruto,
+    renglonesConCosto,
+    renglonesSinCosto,
+  };
+}
+
+export interface ProductoVendido {
+  producto_id: string;
+  nombre: string;
+  cantidad: number;
+  monto: number;
+}
+
+// Dashboard (/admin): top de productos por monto vendido en un rango -- agregación en JS sobre
+// renglones_venta de ventas completadas, mismo criterio que el resto del repo.
+export async function topProductosVendidos(
+  supabase: SupabaseClient<Database>,
+  { desde, hasta, limit }: { desde: string; hasta: string; limit: number },
+): Promise<ProductoVendido[]> {
+  const ventas = await listVentas(supabase, { desde, hasta });
+  const completadas = ventas.filter((v) => v.estado === "completada");
+  if (completadas.length === 0) return [];
+
+  const { data: renglones, error } = await supabase
+    .from("renglones_venta")
+    .select("producto_id, cantidad, subtotal")
+    .in(
+      "venta_id",
+      completadas.map((v) => v.id),
+    );
+  if (error) throw error;
+
+  const agrupado = new Map<string, { cantidad: number; monto: number }>();
+  for (const r of renglones) {
+    const actual = agrupado.get(r.producto_id) ?? { cantidad: 0, monto: 0 };
+    actual.cantidad += Number(r.cantidad);
+    actual.monto += Number(r.subtotal);
+    agrupado.set(r.producto_id, actual);
+  }
+
+  const { data: productos, error: productosError } = await supabase
+    .from("productos")
+    .select("id, nombre")
+    .in("id", Array.from(agrupado.keys()));
+  if (productosError) throw productosError;
+  const nombrePorId = new Map(productos.map((p) => [p.id, p.nombre]));
+
+  return Array.from(agrupado.entries())
+    .map(([producto_id, v]) => ({
+      producto_id,
+      nombre: nombrePorId.get(producto_id) ?? "—",
+      cantidad: v.cantidad,
+      monto: v.monto,
+    }))
+    .sort((a, b) => b.monto - a.monto)
+    .slice(0, limit);
+}
+
 export interface ListVentasPaginadoParams {
   page: number;
   pageSize: number;

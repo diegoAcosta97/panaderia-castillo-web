@@ -10,6 +10,7 @@ import type { ConfiguracionNegocio } from "@/repositories/configuracionRepositor
 const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
   mercado_pago: "Mercado Pago",
+  sena_pedido: "Seña (pedido por encargo)",
 };
 
 export function Comprobante({

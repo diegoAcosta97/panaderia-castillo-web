@@ -1,18 +1,52 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Filter } from "lucide-react";
+import { Filter, Download } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGastosTable } from "@/features/gastos/hooks/useGastosTable";
+import { listGastos } from "@/repositories/gastosRepository";
+import { createClient } from "@/lib/supabase/client";
+import { descargarCsv } from "@/lib/csv";
+import { getErrorMessage } from "@/lib/errors";
 import type { Gasto } from "@/repositories/gastosRepository";
 import type { Proveedor } from "@/repositories/proveedoresRepository";
 
 export function GastosTable({ proveedores }: { proveedores: Proveedor[] }) {
   const table = useGastosTable();
   const nombreProveedor = (id: string) => proveedores.find((p) => p.id === id)?.nombre ?? "—";
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
+
+  async function exportarCsv() {
+    setErrorExport(null);
+    setExportando(true);
+    try {
+      const supabase = createClient();
+      const gastos = await listGastos(supabase, {
+        proveedorId: table.proveedorId || undefined,
+        desde: table.desde || undefined,
+        hasta: table.hasta || undefined,
+      });
+      descargarCsv(
+        `gastos_${new Date().toISOString().slice(0, 10)}.csv`,
+        ["Fecha", "Proveedor", "Concepto", "Monto"],
+        gastos.map((g) => [
+          new Date(g.fecha).toLocaleString("es-AR"),
+          nombreProveedor(g.proveedor_id),
+          g.concepto,
+          g.monto,
+        ]),
+      );
+    } catch (err) {
+      setErrorExport(getErrorMessage(err, "No se pudo exportar el CSV."));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const columns = useMemo<ColumnDef<Gasto, unknown>[]>(
     () => [
@@ -82,7 +116,13 @@ export function GastosTable({ proveedores }: { proveedores: Proveedor[] }) {
             Filtros activos
           </p>
         )}
+        <Button type="button" variant="outline" onClick={exportarCsv} disabled={exportando}>
+          <Download className="size-4" />
+          {exportando ? "Exportando..." : "Exportar CSV"}
+        </Button>
       </div>
+
+      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
 
       <DataTable
         columns={columns}

@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Download } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVentasTable } from "@/features/ventas/hooks/useVentasTable";
+import { listVentas } from "@/repositories/ventasRepository";
+import { createClient } from "@/lib/supabase/client";
+import { descargarCsv } from "@/lib/csv";
+import { getErrorMessage } from "@/lib/errors";
 import type { Venta } from "@/repositories/ventasRepository";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
 
@@ -18,6 +24,38 @@ const ETIQUETA_ESTADO: Record<string, string> = {
 
 export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
   const table = useVentasTable();
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
+
+  async function exportarCsv() {
+    setErrorExport(null);
+    setExportando(true);
+    try {
+      const supabase = createClient();
+      const ventas = await listVentas(supabase, {
+        cajaTurnoId: table.cajaTurnoId || undefined,
+        desde: table.desde || undefined,
+        hasta: table.hasta || undefined,
+      });
+      descargarCsv(
+        `ventas_${new Date().toISOString().slice(0, 10)}.csv`,
+        ["N.º comprobante", "Fecha", "Subtotal", "Ofertas", "Descuentos", "Total", "Estado"],
+        ventas.map((v) => [
+          v.numero_comprobante,
+          new Date(v.fecha).toLocaleString("es-AR"),
+          v.subtotal,
+          v.total_ofertas,
+          v.total_descuentos,
+          v.total,
+          ETIQUETA_ESTADO[v.estado] ?? v.estado,
+        ]),
+      );
+    } catch (err) {
+      setErrorExport(getErrorMessage(err, "No se pudo exportar el CSV."));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const columns = useMemo<ColumnDef<Venta, unknown>[]>(
     () => [
@@ -98,7 +136,13 @@ export function VentasTable({ turnos }: { turnos: CajaTurno[] }) {
             onChange={(e) => table.setHasta(e.target.value)}
           />
         </div>
+        <Button type="button" variant="outline" onClick={exportarCsv} disabled={exportando}>
+          <Download className="size-4" />
+          {exportando ? "Exportando..." : "Exportar CSV"}
+        </Button>
       </div>
+
+      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
 
       <DataTable
         columns={columns}
