@@ -6,6 +6,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/DataTable";
 import { Checkbox } from "@/components/ui/checkbox";
 import { buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ProductoDialog } from "@/features/productos/components/ProductoDialog";
 import { actualizarProducto } from "@/features/productos/actions";
 import { useProductosTable } from "@/features/productos/hooks/useProductosTable";
@@ -97,14 +99,59 @@ export function ProductosTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end gap-2">
-        <Link href="/admin/productos/categorias" className={buttonVariants({ variant: "outline" })}>
-          Categorías
-        </Link>
-        <Link href="/admin/productos/reposicion" className={buttonVariants({ variant: "outline" })}>
-          Reposición
-        </Link>
-        <ProductoDialog categorias={categorias} onSaved={table.refetch} />
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        {/* Selects nativos a propósito, mismo criterio que features/gastos/components/GastosTable.tsx. */}
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="grid gap-2">
+            <Label htmlFor="categoria-filtro">Categoría</Label>
+            <select
+              id="categoria-filtro"
+              value={table.categoriaId}
+              onChange={(e) => table.setCategoriaId(e.target.value)}
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value={table.todasValue}>Todas</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="activo-filtro">Estado</Label>
+            <select
+              id="activo-filtro"
+              value={table.activo}
+              onChange={(e) => table.setActivo(e.target.value)}
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value={table.todosActivoValue}>Todos</option>
+              <option value="true">Activos</option>
+              <option value="false">Inactivos</option>
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="nombre-filtro">Buscar por nombre</Label>
+            <Input
+              id="nombre-filtro"
+              type="search"
+              placeholder="Nombre del producto..."
+              value={table.nombreInput}
+              onChange={(e) => table.setNombreInput(e.target.value)}
+              className="w-56"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/admin/productos/categorias" className={buttonVariants({ variant: "outline" })}>
+            Categorías
+          </Link>
+          <Link href="/admin/productos/reposicion" className={buttonVariants({ variant: "outline" })}>
+            Reposición
+          </Link>
+          <ProductoDialog categorias={categorias} onSaved={table.refetch} />
+        </div>
       </div>
       <DataTable
         columns={columns}
@@ -116,7 +163,13 @@ export function ProductosTable({
         onPageChange={table.setPageIndex}
         sorting={table.sorting}
         onSortingChange={table.setSorting}
-        emptyMessage="No hay productos cargados."
+        emptyMessage={
+          table.categoriaId !== table.todasValue ||
+          table.activo !== table.todosActivoValue ||
+          table.nombreInput
+            ? "No hay productos que coincidan con el filtro."
+            : "No hay productos cargados."
+        }
       />
     </div>
   );

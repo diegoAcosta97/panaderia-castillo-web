@@ -31,18 +31,24 @@ export interface ListProductosPaginadoParams {
   page: number;
   pageSize: number;
   sort?: { column: string; ascending: boolean };
+  categoriaId?: string;
+  nombre?: string;
+  activo?: boolean;
 }
 
 // Listado paginado/ordenado server-side para el DataTable de /admin/productos (mismo patrón que
 // listBooksAdmin en biblioteca-liliana-bodoc-web).
 export async function listProductosPaginated(
   supabase: SupabaseClient<Database>,
-  { page, pageSize, sort }: ListProductosPaginadoParams,
+  { page, pageSize, sort, categoriaId, nombre, activo }: ListProductosPaginadoParams,
 ): Promise<{ data: Producto[]; count: number }> {
   const from = page * pageSize;
   const to = from + pageSize - 1;
 
   let request = supabase.from("productos").select("*", { count: "exact" });
+  if (categoriaId) request = request.eq("categoria_id", categoriaId);
+  if (nombre) request = request.ilike("nombre", `%${nombre}%`);
+  if (activo !== undefined) request = request.eq("activo", activo);
   request = sort
     ? request.order(sort.column, { ascending: sort.ascending })
     : request.order("nombre");
