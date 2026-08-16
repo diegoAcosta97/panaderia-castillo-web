@@ -15,7 +15,6 @@ import {
   CalendarClock,
   History,
   ClipboardList,
-  ArrowLeft,
   Menu,
   X,
 } from "lucide-react";
@@ -40,11 +39,14 @@ const SECCIONES = [
 // en vez del gris casi negro del admin) para que a simple vista se note quién está logueado, sin
 // tener que desloguearse para chequear.
 //
+// Solo se renderiza para cajeros -- un admin en /pos ve su AdminSidebar de siempre (ver
+// app/pos/layout.tsx), así nunca pierde el resto del menú mientras carga una venta.
+//
 // En mobile el sidebar deja de ocupar ancho fijo (240px eran la mitad de la pantalla en un
 // celular chico) -- pasa a ser un panel superpuesto que se abre con el botón hamburguesa de la
 // barra superior, mismo criterio que AdminSidebar. En md: en adelante vuelve exactamente al
 // comportamiento de siempre (estático, siempre visible).
-export function PosSidebar({ esAdmin = false }: { esAdmin?: boolean }) {
+export function PosSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -109,16 +111,6 @@ export function PosSidebar({ esAdmin = false }: { esAdmin?: boolean }) {
             <X className="size-4" />
           </Button>
         </div>
-
-        {esAdmin && (
-          <Link
-            href="/admin"
-            className="flex items-center gap-2.5 border-b border-[#4a3520] px-4 py-3 text-sm font-medium text-[#fdfbf7]/80 transition-colors hover:bg-[#4a3520] hover:text-[#fdfbf7]"
-          >
-            <ArrowLeft className="size-4 shrink-0" />
-            Volver al panel
-          </Link>
-        )}
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
           {SECCIONES.map(({ href, label, icon: Icon, exact }) => {

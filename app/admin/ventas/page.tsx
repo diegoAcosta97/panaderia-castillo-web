@@ -13,8 +13,8 @@ export default async function VentasHistorialPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Ventas</h1>
         {/* /pos ya exige turno de caja abierto (E4-2) -- si el admin no tiene uno, lo manda a
-            abrirlo primero, mismo camino que recorre un cajero. No hay guard de rol en /pos: un
-            administrador ya podía vender, esto solo le da un acceso directo desde el historial. */}
+            abrirlo primero, mismo camino que recorre un cajero. El admin ve su AdminSidebar de
+            siempre en /pos (app/pos/layout.tsx), así que no pierde el resto del menú. */}
         <Link href="/pos" className={buttonVariants()}>
           Nueva venta
         </Link>
