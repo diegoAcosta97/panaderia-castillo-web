@@ -316,12 +316,44 @@ Al aprobar (`estado = 'aprobado'`): por cada detalle con `diferencia != 0` se ac
 `productos.stock_actual = stock_contado` y se crea un `movimientos_stock` con
 `tipo = 'ajuste_control_stock'`.
 
+## Ingreso de mercadería
+
+### `ingresos_mercaderia`
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| usuario_id | uuid | FK a `perfiles.id`, quien carga el ingreso (cajero o admin) |
+| estado | estado_ingreso_mercaderia | default `pendiente_aprobacion` |
+| usuario_aprobador_id | uuid, nullable | FK a `perfiles.id` — null si sigue pendiente |
+| fecha | timestamptz | default now() |
+| fecha_aprobacion | timestamptz, nullable | |
+| observaciones | text, nullable | |
+
+### `ingreso_mercaderia_items`
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| ingreso_mercaderia_id | uuid | FK a `ingresos_mercaderia.id` |
+| producto_id | uuid | FK a `productos.id` (solo productos con `controla_stock = true`) |
+| cantidad | numeric(12,3) | > 0, lo que se sumará al stock |
+| stock_previo | numeric(12,3) | snapshot al cargar (auditoría, no se usa para calcular el ajuste) |
+| stock_resultante | numeric(12,3), nullable | null mientras está pendiente, se completa al aprobar |
+
+Si quien carga (`crear_ingreso_mercaderia`) es administrador, el ingreso nace `aprobado` y la
+misma función suma `cantidad` a `productos.stock_actual` de cada item y crea un
+`movimientos_stock` con `tipo = 'ingreso_mercaderia'`. Si es cajero, nace `pendiente_aprobacion`
+sin tocar stock hasta que `aprobar_ingreso_mercaderia` lo aprueba — ahí el ajuste se calcula sobre
+el `stock_actual` vigente en ese momento, no sobre `stock_previo`, para no perder ventas/mermas
+concurrentes. A diferencia de `controles_stock`, no hay policies de insert/update para
+`authenticated`: las tres transiciones son exclusivamente vía funciones `SECURITY DEFINER`.
+
 ## Relaciones — resumen
 
 ```
 perfiles ──< caja_turnos (apertura/cierre)
 perfiles ──< ventas (cajero)
 perfiles ──< gastos, etiqueta_lotes, controles_stock, movimientos_stock (usuario)
+perfiles ──< ingresos_mercaderia (usuario, usuario_aprobador — EPIC 15)
 empleados ──< movimientos_stock (empleado_id, solo consumo_interno — EPIC 14)
 
 categorias ──< productos
@@ -331,6 +363,7 @@ productos ──< renglones_venta >── ventas
 productos ──< movimientos_stock
 productos ──< etiqueta_lotes
 productos ──< control_stock_detalles >── controles_stock
+productos ──< ingreso_mercaderia_items >── ingresos_mercaderia
 
 caja_turnos ──< ventas
 caja_turnos ──< gastos

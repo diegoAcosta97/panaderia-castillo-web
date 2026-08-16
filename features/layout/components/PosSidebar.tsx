@@ -10,6 +10,7 @@ import {
   Tag,
   PackageX,
   PackageMinus,
+  PackagePlus,
   CalendarClock,
   History,
 } from "lucide-react";
@@ -24,6 +25,7 @@ const SECCIONES = [
   { href: "/pos/etiquetas", label: "Etiquetas", icon: Tag },
   { href: "/pos/merma", label: "Merma", icon: PackageX },
   { href: "/pos/consumo-interno", label: "Consumo interno", icon: PackageMinus },
+  { href: "/pos/ingresos-mercaderia", label: "Ingreso de mercadería", icon: PackagePlus },
   { href: "/pos/pedidos", label: "Pedidos", icon: CalendarClock },
 ];
 

@@ -18,6 +18,7 @@ import {
   UserCog,
   HandCoins,
   History,
+  PackagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
@@ -36,6 +37,7 @@ const SECCIONES = [
   { href: "/admin/descuentos", label: "Descuentos", icon: Tag },
   { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
   { href: "/admin/control-stock", label: "Control de stock", icon: ClipboardList },
+  { href: "/admin/ingresos-mercaderia", label: "Ingresos de mercadería", icon: PackagePlus },
   { href: "/admin/movimientos-stock", label: "Movimientos de stock", icon: History },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
 ];
@@ -71,7 +73,7 @@ export function AdminSidebar({ session }: { session: Session | null }) {
         })}
       </nav>
 
-      <div className="flex flex-col gap-2 border-t border-sidebar-border p-3">
+      <div className="flex flex-col gap-2 border-t border-sidebar-border p-3 text-foreground">
         <p className="truncate px-1 text-xs text-sidebar-foreground/60">
           {session?.perfil.nombre_completo || session?.perfil.email} · {session?.rol}
         </p>

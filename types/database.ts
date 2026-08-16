@@ -15,7 +15,8 @@ export type TipoMovimientoStock =
   | "ajuste_manual"
   | "alta_inicial"
   | "merma"
-  | "consumo_interno";
+  | "consumo_interno"
+  | "ingreso_mercaderia";
 export type EstadoCajaTurno = "abierta" | "cerrada";
 export type TipoBeneficioOferta = "precio_fijo" | "descuento_porcentaje" | "descuento_monto";
 export type TipoEfectoDescuento = "porcentaje" | "monto_fijo";
@@ -30,6 +31,7 @@ export type EstadoControlStock =
   | "rechazado";
 export type TipoCobroEmpleado = "por_dia" | "quincena";
 export type EstadoPedidoEncargo = "pendiente" | "entregado" | "cancelado";
+export type EstadoIngresoMercaderia = "pendiente_aprobacion" | "aprobado" | "rechazado";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -289,6 +291,63 @@ export interface Database {
           producto_id?: string;
           stock_sistema?: number;
           stock_contado?: number;
+        };
+        Relationships: [];
+      };
+      ingresos_mercaderia: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          estado: EstadoIngresoMercaderia;
+          usuario_aprobador_id: string | null;
+          fecha: string;
+          fecha_aprobacion: string | null;
+          observaciones: string | null;
+        };
+        Insert: {
+          id?: string;
+          usuario_id: string;
+          estado?: EstadoIngresoMercaderia;
+          usuario_aprobador_id?: string | null;
+          fecha?: string;
+          fecha_aprobacion?: string | null;
+          observaciones?: string | null;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string;
+          estado?: EstadoIngresoMercaderia;
+          usuario_aprobador_id?: string | null;
+          fecha?: string;
+          fecha_aprobacion?: string | null;
+          observaciones?: string | null;
+        };
+        Relationships: [];
+      };
+      ingreso_mercaderia_items: {
+        Row: {
+          id: string;
+          ingreso_mercaderia_id: string;
+          producto_id: string;
+          cantidad: number;
+          stock_previo: number;
+          stock_resultante: number | null;
+        };
+        Insert: {
+          id?: string;
+          ingreso_mercaderia_id: string;
+          producto_id: string;
+          cantidad: number;
+          stock_previo: number;
+          stock_resultante?: number | null;
+        };
+        Update: {
+          id?: string;
+          ingreso_mercaderia_id?: string;
+          producto_id?: string;
+          cantidad?: number;
+          stock_previo?: number;
+          stock_resultante?: number | null;
         };
         Relationships: [];
       };
@@ -940,6 +999,27 @@ export interface Database {
         };
         Returns: Json;
       };
+      crear_ingreso_mercaderia: {
+        Args: {
+          p_items: Json;
+          p_observaciones: string | null;
+        };
+        Returns: Json;
+      };
+      aprobar_ingreso_mercaderia: {
+        Args: {
+          p_ingreso_mercaderia_id: string;
+          p_aprobador_id: string;
+        };
+        Returns: undefined;
+      };
+      rechazar_ingreso_mercaderia: {
+        Args: {
+          p_ingreso_mercaderia_id: string;
+          p_aprobador_id: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       rol_usuario: RolUsuario;
@@ -954,6 +1034,7 @@ export interface Database {
       estado_pago_medio: EstadoPagoMedio;
       estado_control_stock: EstadoControlStock;
       estado_pedido_encargo: EstadoPedidoEncargo;
+      estado_ingreso_mercaderia: EstadoIngresoMercaderia;
     };
     CompositeTypes: Record<never, never>;
   };
