@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   ChefHat,
   ShoppingCart,
@@ -15,8 +16,11 @@ import {
   History,
   ClipboardList,
   ArrowLeft,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
 
 const SECCIONES = [
@@ -35,50 +39,112 @@ const SECCIONES = [
 // Reemplaza PosTopBar: mismo patrón que AdminSidebar, pero con un fondo distinto (marrón cálido
 // en vez del gris casi negro del admin) para que a simple vista se note quién está logueado, sin
 // tener que desloguearse para chequear.
+//
+// En mobile el sidebar deja de ocupar ancho fijo (240px eran la mitad de la pantalla en un
+// celular chico) -- pasa a ser un panel superpuesto que se abre con el botón hamburguesa de la
+// barra superior, mismo criterio que AdminSidebar. En md: en adelante vuelve exactamente al
+// comportamiento de siempre (estático, siempre visible).
 export function PosSidebar({ esAdmin = false }: { esAdmin?: boolean }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    Promise.resolve().then(() => setOpen(false));
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   return (
-    <aside className="flex min-h-svh w-60 shrink-0 flex-col bg-[#2b1b0e] text-[#fdfbf7] print:hidden">
-      <div className="flex items-center gap-2 border-b border-[#4a3520] px-4 py-4">
-        <ChefHat className="size-6 text-[#e65100]" />
+    <>
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-2 border-b border-[#4a3520] bg-[#2b1b0e] px-3 text-[#fdfbf7] md:hidden print:hidden">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="text-[#fdfbf7] hover:bg-[#4a3520] hover:text-[#fdfbf7]"
+          onClick={() => setOpen(true)}
+          aria-label="Abrir menú"
+        >
+          <Menu className="size-5" />
+        </Button>
+        <ChefHat className="size-5 text-[#e65100]" />
         <span className="text-sm leading-tight font-semibold">Panadería Castillo</span>
       </div>
 
-      {esAdmin && (
-        <Link
-          href="/admin"
-          className="flex items-center gap-2.5 border-b border-[#4a3520] px-4 py-3 text-sm font-medium text-[#fdfbf7]/80 transition-colors hover:bg-[#4a3520] hover:text-[#fdfbf7]"
-        >
-          <ArrowLeft className="size-4 shrink-0" />
-          Volver al panel
-        </Link>
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
       )}
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        {SECCIONES.map(({ href, label, icon: Icon, exact }) => {
-          const activo = exact ? pathname === href : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                activo
-                  ? "bg-[#e65100] text-white"
-                  : "text-[#fdfbf7]/80 hover:bg-[#4a3520] hover:text-[#fdfbf7]",
-              )}
-            >
-              <Icon className="size-4 shrink-0" />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col bg-[#2b1b0e] text-[#fdfbf7] transition-transform duration-200 ease-in-out print:hidden",
+          "md:static md:z-auto md:min-h-svh md:translate-x-0 md:transition-none",
+          open ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-[#4a3520] px-4 py-4">
+          <div className="flex items-center gap-2">
+            <ChefHat className="size-6 text-[#e65100]" />
+            <span className="text-sm leading-tight font-semibold">Panadería Castillo</span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-[#fdfbf7] hover:bg-[#4a3520] hover:text-[#fdfbf7] md:hidden"
+            onClick={() => setOpen(false)}
+            aria-label="Cerrar menú"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
 
-      <div className="border-t border-[#4a3520] p-3 text-foreground">
-        <LogoutButton />
-      </div>
-    </aside>
+        {esAdmin && (
+          <Link
+            href="/admin"
+            className="flex items-center gap-2.5 border-b border-[#4a3520] px-4 py-3 text-sm font-medium text-[#fdfbf7]/80 transition-colors hover:bg-[#4a3520] hover:text-[#fdfbf7]"
+          >
+            <ArrowLeft className="size-4 shrink-0" />
+            Volver al panel
+          </Link>
+        )}
+
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+          {SECCIONES.map(({ href, label, icon: Icon, exact }) => {
+            const activo = exact ? pathname === href : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  activo
+                    ? "bg-[#e65100] text-white"
+                    : "text-[#fdfbf7]/80 hover:bg-[#4a3520] hover:text-[#fdfbf7]",
+                )}
+              >
+                <Icon className="size-4 shrink-0" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-[#4a3520] p-3 text-foreground">
+          <LogoutButton />
+        </div>
+      </aside>
+    </>
   );
 }

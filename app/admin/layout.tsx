@@ -14,7 +14,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-svh">
       <AdminSidebar session={session} />
-      <main className="min-w-0 flex-1">{children}</main>
+      {/* pt-14 compensa la barra fija con el botón hamburguesa que AdminSidebar muestra en
+          mobile (md:hidden); en desktop el sidebar es estático y no hace falta. */}
+      <main className="min-w-0 flex-1 pt-14 md:pt-0">{children}</main>
     </div>
   );
 }

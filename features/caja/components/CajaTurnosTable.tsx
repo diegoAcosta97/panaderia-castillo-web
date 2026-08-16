@@ -1,16 +1,62 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { ListadoImprimible } from "@/components/print/ListadoImprimible";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCajaTurnosTable } from "@/features/caja/hooks/useCajaTurnosTable";
+import { listTurnos } from "@/repositories/cajaTurnosRepository";
+import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 import { formatearMoneda } from "@/lib/format";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
 
+const ETIQUETA_ESTADO: Record<string, string> = { abierta: "Abierta", cerrada: "Cerrada" };
+
 export function CajaTurnosTable() {
   const table = useCajaTurnosTable();
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
+  const [listado, setListado] = useState<(string | number)[][] | null>(null);
+
+  useEffect(() => {
+    if (!listado) return;
+    const limpiar = () => setListado(null);
+    window.addEventListener("afterprint", limpiar);
+    window.print();
+    return () => window.removeEventListener("afterprint", limpiar);
+  }, [listado]);
+
+  async function exportarImprimible() {
+    setErrorExport(null);
+    setExportando(true);
+    try {
+      const supabase = createClient();
+      const turnos = await listTurnos(supabase, {
+        desde: table.desde || undefined,
+        hasta: table.hasta || undefined,
+      });
+      setListado(
+        turnos.map((t) => [
+          t.fecha,
+          t.etiqueta_turno || "",
+          ETIQUETA_ESTADO[t.estado] ?? t.estado,
+          formatearMoneda(t.monto_apertura),
+          t.monto_cierre_declarado != null ? formatearMoneda(t.monto_cierre_declarado) : "",
+          t.efectivo_esperado != null ? formatearMoneda(t.efectivo_esperado) : "",
+          t.diferencia != null ? formatearMoneda(t.diferencia) : "",
+        ]),
+      );
+    } catch (err) {
+      setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const columns = useMemo<ColumnDef<CajaTurno, unknown>[]>(
     () => [
@@ -62,8 +108,9 @@ export function CajaTurnosTable() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-end gap-2">
+    <>
+    <div className="flex flex-col gap-4 print:hidden">
+      <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-2">
           <Label htmlFor="desde">Desde</Label>
           <Input
@@ -82,7 +129,13 @@ export function CajaTurnosTable() {
             onChange={(e) => table.setHasta(e.target.value)}
           />
         </div>
+        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+          <Printer className="size-4" />
+          {exportando ? "Generando..." : "Exportar listado"}
+        </Button>
       </div>
+
+      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
 
       <DataTable
         columns={columns}
@@ -97,5 +150,13 @@ export function CajaTurnosTable() {
         emptyMessage="No hay turnos que coincidan con el filtro."
       />
     </div>
+    {listado && (
+      <ListadoImprimible
+        titulo="Historial de caja"
+        headers={["Fecha", "Turno", "Estado", "Apertura", "Cierre declarado", "Esperado", "Diferencia"]}
+        rows={listado}
+      />
+    )}
+    </>
   );
 }
