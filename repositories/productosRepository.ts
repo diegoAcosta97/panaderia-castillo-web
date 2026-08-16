@@ -206,3 +206,15 @@ export async function actualizarProducto(
     .eq("id", id);
   if (error) throw error;
 }
+
+// Borrado real (no desactivar): las FKs de renglones_venta/movimientos_stock/etc. rechazan el
+// delete si el producto tiene cualquier historial relacionado -- ver nota en la migración
+// productos_delete_admin. El caller traduce ese error (POSTGRES_FOREIGN_KEY_VIOLATION) a un
+// mensaje claro para el usuario.
+export async function eliminarProducto(
+  supabase: SupabaseClient<Database>,
+  id: string,
+): Promise<void> {
+  const { error } = await supabase.from("productos").delete().eq("id", id);
+  if (error) throw error;
+}

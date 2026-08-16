@@ -19,6 +19,11 @@ export function getErrorMessage(err: unknown, fallback: string): string {
 // productosRepository si dos generaciones al azar colisionan (lib/barcode.ts).
 export const POSTGRES_UNIQUE_VIOLATION = "23505";
 
+// Código SQLSTATE de Postgres para violación de constraint `foreign key` -- usado para traducir
+// a un mensaje claro el intento de borrar una fila que todavía tiene historial relacionado (ej.
+// un producto con ventas/movimientos de stock asociados).
+export const POSTGRES_FOREIGN_KEY_VIOLATION = "23503";
+
 export function isPostgresErrorCode(err: unknown, code: string): boolean {
   return (
     typeof err === "object" &&

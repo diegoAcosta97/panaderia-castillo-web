@@ -78,6 +78,24 @@ Catálogo del comercio y el registro base de movimientos de stock, usado luego p
         `controlaStock` está tildado); verificado que `stock_actual` queda `null` al crear con
         `controla_stock = false`
 
+**Borrado real desde el listado (2026-08-20):** además de la baja lógica (`activo = false`), se
+agregó poder eliminar un producto de verdad desde `/admin/productos`, con confirmación (RF
+pedido explícitamente: "antes de eliminar que me pida confirmacion") vía
+`EliminarProductoDialog`. Solo admin (`productos_delete_admin`, política nueva -- la tabla no
+tenía ninguna policy de `delete` hasta acá). Sin función `SECURITY DEFINER`: un `delete` directo
+alcanza porque las FKs de `renglones_venta`/`movimientos_stock`/`control_stock_detalles`/
+`ingreso_mercaderia_items`/`etiqueta_lotes`/`oferta_items`/`descuento_condiciones`/
+`pedido_encargo_items`/`bloqueo_caja_*` (todas sin `on delete cascade`) ya rechazan el borrado si
+el producto tiene cualquier historial -- ese error de FK (`23503`) se traduce a un mensaje claro
+("Desactivalo en cambio") en la Server Action en vez de dejarlo como un error crudo de Postgres.
+Verificado contra la base real: un cajero no puede borrar (RLS, 0 filas afectadas); un admin
+puede borrar un producto sin historial; un admin NO puede borrar un producto con un
+`movimientos_stock` asociado (rechazado con `23503`, mensaje traducido).
+- **Archivos/módulos:** `supabase/migrations/20260820090000_productos_delete_admin.sql`,
+  `repositories/productosRepository.ts` (`eliminarProducto`), `features/productos/actions.ts`
+  (`eliminarProducto`), `features/productos/components/EliminarProductoDialog.tsx`,
+  `lib/errors.ts` (`POSTGRES_FOREIGN_KEY_VIOLATION`)
+
 ---
 
 ### E3-6 — Listado de reposición (stock bajo) ✅ Hecho (2026-08-06)

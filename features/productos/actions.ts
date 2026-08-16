@@ -11,10 +11,12 @@ import {
 import {
   crearProducto as crearProductoRepo,
   actualizarProducto as actualizarProductoRepo,
+  eliminarProducto as eliminarProductoRepo,
   type NuevoProducto,
   type Producto,
 } from "@/repositories/productosRepository";
 import { ejecutarAccion, type ActionResult } from "@/lib/actionResult";
+import { isPostgresErrorCode, POSTGRES_FOREIGN_KEY_VIOLATION } from "@/lib/errors";
 
 async function requireAdmin() {
   const session = await getServerSession();
@@ -78,4 +80,22 @@ export async function actualizarProducto(
     await actualizarProductoRepo(supabase, id, patch);
     revalidatePath("/admin/productos");
   }, "No se pudo actualizar el producto");
+}
+
+export async function eliminarProducto(id: string): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    try {
+      await eliminarProductoRepo(supabase, id);
+    } catch (err) {
+      if (isPostgresErrorCode(err, POSTGRES_FOREIGN_KEY_VIOLATION)) {
+        throw new Error(
+          "No se puede eliminar: este producto tiene ventas, movimientos de stock u otro historial asociado. Desactivalo en cambio (columna Activo).",
+        );
+      }
+      throw err;
+    }
+    revalidatePath("/admin/productos");
+  }, "No se pudo eliminar el producto");
 }

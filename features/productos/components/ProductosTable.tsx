@@ -11,6 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProductoDialog } from "@/features/productos/components/ProductoDialog";
+import { EliminarProductoDialog } from "@/features/productos/components/EliminarProductoDialog";
 import { actualizarProducto } from "@/features/productos/actions";
 import { useProductosTable } from "@/features/productos/hooks/useProductosTable";
 import { listProductos } from "@/repositories/productosRepository";
@@ -132,7 +133,10 @@ export function ProductosTable({
         id: "acciones",
         header: "",
         cell: ({ row }) => (
-          <ProductoDialog categorias={categorias} producto={row.original} onSaved={table.refetch} />
+          <div className="flex justify-end gap-1">
+            <ProductoDialog categorias={categorias} producto={row.original} onSaved={table.refetch} />
+            <EliminarProductoDialog producto={row.original} onEliminado={table.refetch} />
+          </div>
         ),
       },
     ],
