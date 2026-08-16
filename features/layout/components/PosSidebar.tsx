@@ -13,6 +13,7 @@ import {
   PackagePlus,
   CalendarClock,
   History,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
@@ -26,6 +27,7 @@ const SECCIONES = [
   { href: "/pos/merma", label: "Merma", icon: PackageX },
   { href: "/pos/consumo-interno", label: "Consumo interno", icon: PackageMinus },
   { href: "/pos/ingresos-mercaderia", label: "Ingreso de mercadería", icon: PackagePlus },
+  { href: "/pos/control-stock", label: "Control de stock", icon: ClipboardList },
   { href: "/pos/pedidos", label: "Pedidos", icon: CalendarClock },
 ];
 

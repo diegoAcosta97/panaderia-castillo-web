@@ -958,7 +958,24 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<never, never>;
+    Views: {
+      bloqueo_caja_diferencias: {
+        Row: {
+          id: string;
+          bloqueo_caja_conteo_id: string;
+          producto_id: string;
+          producto_nombre: string;
+          categoria_id: string;
+          categoria_nombre: string;
+          stock_sistema: number;
+          stock_contado: number;
+          diferencia: number;
+          caja_turno_id: string;
+          fecha: string;
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       confirmar_venta: {
         Args: {

@@ -165,6 +165,14 @@ turno antes de dejar cerrarlo. A diferencia de `controles_stock`, esto **nunca a
 pasa por aprobación** — es puramente un registro de auditoría para que el administrador compare
 sistema vs. contado y detecte diferencias (control sorpresivo, no un mecanismo de corrección).
 
+### Vista `bloqueo_caja_diferencias`
+Cruza `bloqueo_caja_conteo_items` (con `diferencia != 0`) + `bloqueo_caja_conteos` (fecha) +
+`productos` (nombre) + `categorias` (nombre) en una sola fila, para que `/admin/bloqueo-caja`
+pueda paginar y filtrar por categoría/producto/fecha del lado del servidor en vez de traer todo
+el historial (EPIC 4#E4-5). Creada con `security_invoker = true` (Postgres 15+): corre con los
+permisos de quien consulta, así que respeta las RLS de las tablas de abajo directamente, sin
+necesitar sus propias policies.
+
 ## Ofertas (combos)
 
 ### `ofertas`
@@ -349,6 +357,10 @@ código de barras).
 Al aprobar (`estado = 'aprobado'`): por cada detalle con `diferencia != 0` se actualiza
 `productos.stock_actual = stock_contado` y se crea un `movimientos_stock` con
 `tipo = 'ajuste_control_stock'`.
+
+Cualquier autenticado (cajero o administrador) puede iniciar y cargar su propio conteo
+(`en_progreso → pendiente_aprobacion`, EPIC 11#E11-6) — no es exclusivo de administrador desde
+2026-08-19. Aprobar/rechazar sigue siendo exclusivo de administrador.
 
 ## Ingreso de mercadería
 

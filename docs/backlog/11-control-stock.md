@@ -122,6 +122,40 @@ Conteo físico vs. sistema, con aprobación separada del ajuste (RF-9).
 
 ---
 
+### E11-6 — El cajero también puede iniciar y cargar un conteo ✅ Hecho (2026-08-19)
+- **Objetivo:** que el conteo de stock no sea exclusivamente una tarea de administrador.
+- **Descripción:** hasta acá control_stock era "enteramente admin" por diseño original de E11-1.
+  Se relaja al mismo criterio ya usado en EPIC 15 (ingreso de mercadería) y E4-5 (bloqueo de
+  caja): cualquier autenticado puede iniciar y cerrar **su propio** conteo
+  (`en_progreso → pendiente_aprobacion`); aprobar/rechazar sigue siendo exclusivo de
+  administrador, sin cambios (`aprobar_control_stock` ya lo exigía puertas adentro). Nueva
+  pantalla `/pos/control-stock` (dentro de `(operacion)`, exige turno abierto igual que
+  ingresos-mercaderia/merma) que reutiliza `NuevoControlStockForm` tal cual — no tenía nada
+  admin-específico. `finalizarConteo` (Server Action) pasó de `requireAdmin()` a
+  `requireSession()`; `aprobarControlStock`/`rechazarControlStock` siguen con `requireAdmin()`.
+  Las policies de `select`/`insert`/`update` de `controles_stock`/`control_stock_detalles` se
+  reescribieron para admitir "dueño" además de "admin", con una policy de `update` que separa por
+  `with check` las dos transiciones posibles (dueño cierra su propio conteo; solo admin rechaza
+  cualquiera) — `aprobado` sigue fuera del alcance de cualquier policy directa, solo llega ahí
+  vía la función.
+- **Depende de:** E11-1, E11-2, E11-3, `02-roles.md#E2-2`
+- **Archivos/módulos:** `supabase/migrations/20260819100000_control_stock_cajero.sql`,
+  `features/control-stock/actions.ts`, `app/pos/(operacion)/control-stock/page.tsx`,
+  `features/layout/components/PosSidebar.tsx`
+- **Cambios de base de datos:** políticas de `controles_stock`/`control_stock_detalles`
+  reemplazadas (`select`/`insert`/`update` con dueño; `insert` de detalles ahora también exige
+  que el control padre sea del que inserta, antes solo chequeaba `estado = 'en_progreso'`)
+- **Criterios de aceptación:** (verificado contra la base real)
+  - [x] Un cajero puede iniciar, cargar y cerrar su propio conteo (queda `pendiente_aprobacion`)
+  - [x] Un cajero puede ver su propio conteo, pero no uno ajeno (ej. de un administrador) — ni
+        por `select` ni insertando detalles en un control en_progreso que no es suyo
+  - [x] Un cajero no puede aprobar ni rechazar (ni con `update` directo ni llamando
+        `aprobar_control_stock`) — "No autorizado."
+  - [x] Un administrador sigue pudiendo aprobar cualquier conteo pendiente y el ajuste de stock
+        sigue funcionando igual que antes
+
+---
+
 ## Verificación general (2026-08-08)
 
 Todo lo de arriba se verificó contra la base de datos remota real (Supabase, vía

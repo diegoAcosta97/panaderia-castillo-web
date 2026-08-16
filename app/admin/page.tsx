@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TrendingUp, TrendingDown, Wallet, PackageX, Trophy, ClipboardCheck } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, PackageX, Trophy, ClipboardCheck, CalendarClock } from "lucide-react";
 import { getServerSession } from "@/features/auth/services/sessionService";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -8,11 +8,13 @@ import { getTurnoAbierto } from "@/repositories/cajaTurnosRepository";
 import { sumaVentasEfectivoPorTurno, resumenVentasPorRango, topProductosVendidos } from "@/repositories/ventasRepository";
 import { sumaGastosPorTurno } from "@/repositories/gastosRepository";
 import { sumaPagosEmpleadosPorTurno } from "@/repositories/pagosEmpleadosRepository";
-import { sumaSenasPorTurno } from "@/repositories/pedidosEncargoRepository";
+import { sumaSenasPorTurno, listPedidosEncargoPaginated } from "@/repositories/pedidosEncargoRepository";
 import { listProductosBajoStock } from "@/repositories/productosRepository";
 import { listControlesStock } from "@/repositories/controlStockRepository";
 import { listIngresosMercaderia } from "@/repositories/ingresoMercaderiaRepository";
 import { formatearMoneda } from "@/lib/format";
+
+const PROXIMOS_PEDIDOS_LIMIT = 5;
 
 function fechaISO(offsetDias = 0): string {
   const d = new Date();
@@ -35,6 +37,7 @@ export default async function AdminHome() {
     topProductos,
     controlesStock,
     ingresosMercaderia,
+    proximosPedidos,
   ] = await Promise.all([
     getTurnoAbierto(supabase),
     resumenVentasPorRango(supabase, { desde: hoy, hasta: hoy }),
@@ -43,6 +46,11 @@ export default async function AdminHome() {
     topProductosVendidos(supabase, { desde: hace7Dias, hasta: hoy, limit: 5 }),
     listControlesStock(supabase),
     listIngresosMercaderia(supabase),
+    listPedidosEncargoPaginated(supabase, {
+      page: 0,
+      pageSize: PROXIMOS_PEDIDOS_LIMIT,
+      estado: "pendiente",
+    }),
   ]);
 
   const controlesPendientes = controlesStock.filter((c) => c.estado === "pendiente_aprobacion");
@@ -127,6 +135,42 @@ export default async function AdminHome() {
                 </ul>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {proximosPedidos.data.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <CalendarClock className="size-4 text-muted-foreground" />
+                Próximos pedidos a entregar
+              </span>
+              <Link href="/pos/pedidos" className="text-sm font-normal underline">
+                Ver todos
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {proximosPedidos.data.map((p) => {
+                const vencido = p.fecha_entrega < hoy;
+                return (
+                  <li key={p.id} className="flex items-center justify-between gap-4">
+                    <span className="truncate">
+                      {p.cliente_nombre} — {p.items.length} producto{p.items.length === 1 ? "" : "s"}
+                      {p.sena_total > 0 && ` · seña ${formatearMoneda(p.sena_total)}`}
+                    </span>
+                    <span
+                      className={`shrink-0 ${vencido ? "font-medium text-destructive" : "text-muted-foreground"}`}
+                    >
+                      {new Date(`${p.fecha_entrega}T00:00:00`).toLocaleDateString("es-AR")}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </CardContent>
         </Card>
       )}

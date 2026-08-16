@@ -141,6 +141,20 @@ bloqueado): un cajero que no abrió el turno pudo registrar el conteo, verlo, y 
 policy de select se confirmó abierta insertando un conteo de prueba contra un turno cerrado
 existente y leyéndolo con una sesión de cajero.
 
+**Paginación y filtros de "Diferencias detectadas" (2026-08-19):** el listado original traía
+TODO `bloqueo_caja_conteo_items` con diferencia != 0 sin límite -- con un conteo por cierre de
+turno eso crece sin techo. Se resolvió con una vista `bloqueo_caja_diferencias`
+(`security_invoker = true`, así respeta las RLS de las tablas de abajo sin necesitar sus propias
+políticas) que cruza `bloqueo_caja_conteo_items` + `bloqueo_caja_conteos` + `productos` +
+`categorias`, consultada paginada (20 por página) con filtros de categoría/producto/fecha
+(selects nativos + inputs de fecha, mismo criterio que `MovimientosStockTable`).
+- **Archivos/módulos:** `supabase/migrations/20260819090000_create_bloqueo_caja_diferencias_view.sql`,
+  `repositories/bloqueoCajaRepository.ts` (`listBloqueoCajaDiferenciasPaginated`, reemplaza a
+  `listBloqueoCajaConteoItemsConDiferencia`), `features/bloqueo-caja/hooks/useDiferenciasBloqueoCajaTable.ts`,
+  `features/bloqueo-caja/components/DiferenciasBloqueoCajaTable.tsx`, `types/database.ts` (`Views`)
+- **Verificado:** contra la base real, la vista devuelve las 5 diferencias ya registradas por el
+  dueño con categoría y producto correctos, y una sesión de cajero puede leerla (RLS heredada).
+
 ---
 
 ## Nota de verificación (2026-08-06)

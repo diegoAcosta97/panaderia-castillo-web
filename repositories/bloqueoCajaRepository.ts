@@ -3,8 +3,6 @@ import type { Database, Json } from "@/types/database";
 
 export type BloqueoCajaProducto = Database["public"]["Tables"]["bloqueo_caja_productos"]["Row"];
 export type BloqueoCajaConteo = Database["public"]["Tables"]["bloqueo_caja_conteos"]["Row"];
-export type BloqueoCajaConteoItem =
-  Database["public"]["Tables"]["bloqueo_caja_conteo_items"]["Row"];
 
 export const BLOQUEO_CAJA_MAX_PRODUCTOS = 10;
 
@@ -76,39 +74,39 @@ export async function getConteoBloqueoCajaPorTurno(
   return data;
 }
 
-// E4-4: historial para que el administrador compare sistema vs. contado, más reciente primero.
-export async function listBloqueoCajaConteos(
-  supabase: SupabaseClient<Database>,
-): Promise<BloqueoCajaConteo[]> {
-  const { data, error } = await supabase
-    .from("bloqueo_caja_conteos")
-    .select("*")
-    .order("fecha", { ascending: false });
-  if (error) throw error;
-  return data;
+export type BloqueoCajaDiferencia = Database["public"]["Views"]["bloqueo_caja_diferencias"]["Row"];
+
+export interface ListBloqueoCajaDiferenciasPaginadoParams {
+  page: number;
+  pageSize: number;
+  sort?: { column: string; ascending: boolean };
+  productoId?: string;
+  categoriaId?: string;
+  desde?: string;
+  hasta?: string;
 }
 
-export async function getItemsBloqueoCajaConteo(
+// E4-5: listado paginado/filtrable de "Diferencias detectadas" en /admin/bloqueo-caja -- con un
+// conteo por cierre de turno esto crece sin techo, así que se pagina y filtra del lado del
+// servidor contra la vista bloqueo_caja_diferencias (cruce de conteo_items + conteos + productos
+// + categorias) en vez de traer todo.
+export async function listBloqueoCajaDiferenciasPaginated(
   supabase: SupabaseClient<Database>,
-  conteoId: string,
-): Promise<BloqueoCajaConteoItem[]> {
-  const { data, error } = await supabase
-    .from("bloqueo_caja_conteo_items")
-    .select("*")
-    .eq("bloqueo_caja_conteo_id", conteoId);
-  if (error) throw error;
-  return data;
-}
+  { page, pageSize, sort, productoId, categoriaId, desde, hasta }: ListBloqueoCajaDiferenciasPaginadoParams,
+): Promise<{ data: BloqueoCajaDiferencia[]; count: number }> {
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
 
-// E4-4: todos los items con diferencia != 0 de todos los conteos -- para que el administrador
-// vea de un vistazo qué se detectó en los controles sorpresivos, sin abrir turno por turno.
-export async function listBloqueoCajaConteoItemsConDiferencia(
-  supabase: SupabaseClient<Database>,
-): Promise<BloqueoCajaConteoItem[]> {
-  const { data, error } = await supabase
-    .from("bloqueo_caja_conteo_items")
-    .select("*")
-    .neq("diferencia", 0);
+  let request = supabase.from("bloqueo_caja_diferencias").select("*", { count: "exact" });
+  if (productoId) request = request.eq("producto_id", productoId);
+  if (categoriaId) request = request.eq("categoria_id", categoriaId);
+  if (desde) request = request.gte("fecha", desde);
+  if (hasta) request = request.lte("fecha", `${hasta}T23:59:59`);
+  request = sort
+    ? request.order(sort.column, { ascending: sort.ascending })
+    : request.order("fecha", { ascending: false });
+
+  const { data, error, count } = await request.range(from, to);
   if (error) throw error;
-  return data;
+  return { data: data ?? [], count: count ?? 0 };
 }
