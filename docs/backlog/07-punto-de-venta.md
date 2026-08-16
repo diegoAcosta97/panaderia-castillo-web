@@ -163,6 +163,43 @@ medios de pago, confirmar y descontar stock (RF-4). La integración específica 
 
 ---
 
+### E7-9 — Recargo por pago con tarjeta ✅ Hecho (2026-08-17)
+- **Objetivo:** cobrar 5% más con débito y 15% más con crédito, sin que el recargo aparezca
+  como un ítem aparte del comprobante, y sin poder combinar tarjeta con otro medio de pago.
+- **Descripción:** dos medios de pago nuevos, `tarjeta_debito`/`tarjeta_credito` (`alter type
+  medio_pago add value`, en su propia migración -- mismo criterio que `sena_pedido`).
+  `confirmar_venta` aplica un factor (1.05 / 1.15) a **todo** lo que compone el total antes de
+  sumar/restar -- el subtotal de cada renglón agrupado, el total de ofertas y el total de
+  descuentos -- así el total final es exactamente `total_original * factor` sea cual sea la
+  combinación de combos/descuentos activa, y no hay ninguna línea de "recargo" en ningún lado:
+  cada `renglon_venta` sale directamente con el precio ya recargado en
+  `precio_unitario_snapshot`/`subtotal`. Si `p_medios_pago` incluye una tarjeta, tiene que ser el
+  único elemento del array (`El pago con tarjeta no se puede combinar con otro medio de pago.`).
+  Tarjeta se trata como efectivo a efectos de liquidación: queda `completada`/`acreditado` en el
+  momento (no pasa por Mercado Pago ni por ningún estado pendiente) y por lo tanto descuenta
+  stock igual que una venta en efectivo. `PantallaCobro` agrega los botones Débito/Crédito
+  (deshabilitados si hay una seña de pedido por encargo activa, para no toparse con la seña
+  como un segundo medio de pago) y muestra el total con recargo antes de confirmar; el cliente
+  le manda al RPC el mismo total-con-recargo que el servidor va a recalcular de forma
+  independiente, mismo patrón de "nunca confiar en lo que manda el cliente" que ya usaba el
+  cálculo de Mercado Pago en el combinado.
+- **Depende de:** E7-3, E7-6
+- **Archivos/módulos:**
+  `supabase/migrations/20260817090000_add_tarjeta_medios_pago.sql`,
+  `supabase/migrations/20260817090005_confirmar_venta_recargo_tarjeta.sql`,
+  `features/ventas/components/{PantallaCobro,Comprobante,VentaDetalle}.tsx`, `types/database.ts`
+- **Cambios de base de datos:** `alter type medio_pago add value 'tarjeta_debito'`, `add value
+  'tarjeta_credito'`, `confirmar_venta` reemplazada con el factor de recargo y la validación de
+  "no combinar"
+- **Criterios de aceptación:** (verificado contra la base real, ver nota de verificación)
+  - [x] Pagar con débito deja `ventas.total = subtotal_original * 1.05`, con la suma de
+        `renglones_venta.subtotal` coincidiendo exactamente con `ventas.subtotal`
+  - [x] Pagar con crédito deja `ventas.total = subtotal_original * 1.15`
+  - [x] Combinar tarjeta con efectivo (u otro medio) es rechazado por `confirmar_venta`
+  - [x] Pagar 100% efectivo sigue sin ningún recargo (factor 1, sin cambios de comportamiento)
+
+---
+
 ## Nota de verificación (2026-08-07)
 
 Dos rondas de pruebas reales contra la base (con `tsx`, sin mocks), ambas limpiadas al terminar:
@@ -187,3 +224,14 @@ persistido en `ventas.total`. RLS verificado con un cajero de prueba real: no pu
 recordatorio de que toda limpieza de datos de prueba en tablas de auditoría
 (`caja_turnos`/`gastos`/`ventas`/`movimientos_stock`) debe hacerse con el cliente admin (secret
 key), nunca con el cliente sujeto a RLS.
+
+## Nota de verificación (2026-08-17, E7-9)
+
+Ventas de prueba reales (2 productos, agrupados como en un carrito normal) contra el turno
+abierto real, limpiadas con `anular_venta` (revierte stock correctamente) + borrado de las filas
+al terminar: débito dejó `total = subtotal * 1.05` exacto y la suma de `renglones_venta.subtotal`
+coincidió con `ventas.subtotal`; crédito dejó `total = subtotal * 1.15`; combinar tarjeta con
+efectivo fue rechazado por `confirmar_venta` con el mensaje esperado; una venta 100% efectivo en
+el medio de la prueba confirmó que el resto de los medios de pago siguen sin ningún recargo
+(factor 1, sin regresión). Stock de los productos usados verificado de vuelta en su valor
+original después de la limpieza.

@@ -36,7 +36,7 @@ export function PosSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-svh w-60 shrink-0 flex-col bg-[#2b1b0e] text-[#fdfbf7] print:hidden">
+    <aside className="flex min-h-svh w-60 shrink-0 flex-col bg-[#2b1b0e] text-[#fdfbf7] print:hidden">
       <div className="flex items-center gap-2 border-b border-[#4a3520] px-4 py-4">
         <ChefHat className="size-6 text-[#e65100]" />
         <span className="text-sm leading-tight font-semibold">Panadería Castillo</span>

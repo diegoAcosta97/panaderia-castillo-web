@@ -21,6 +21,8 @@ const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
   mercado_pago: "Mercado Pago",
   sena_pedido: "Seña (pedido por encargo)",
+  tarjeta_debito: "Tarjeta de débito",
+  tarjeta_credito: "Tarjeta de crédito",
 };
 
 // Compartido entre /admin/ventas/[id] y /pos/ventas/[id] -- la única diferencia entre admin y

@@ -22,7 +22,12 @@ export type TipoBeneficioOferta = "precio_fijo" | "descuento_porcentaje" | "desc
 export type TipoEfectoDescuento = "porcentaje" | "monto_fijo";
 export type TipoCondicionDescuento = "monto_minimo" | "producto_incluido" | "categoria_incluida";
 export type EstadoVenta = "pendiente_pago" | "completada" | "anulada";
-export type MedioPago = "efectivo" | "mercado_pago" | "sena_pedido";
+export type MedioPago =
+  | "efectivo"
+  | "mercado_pago"
+  | "sena_pedido"
+  | "tarjeta_debito"
+  | "tarjeta_credito";
 export type EstadoPagoMedio = "pendiente" | "acreditado" | "rechazado";
 export type EstadoControlStock =
   | "en_progreso"
@@ -75,6 +80,7 @@ export interface Database {
           updated_at: string;
           mercadopago_store_id: string | null;
           mercadopago_external_pos_id: string | null;
+          bloqueo_caja_activo: boolean;
         };
         Insert: {
           id?: string;
@@ -85,6 +91,7 @@ export interface Database {
           updated_at?: string;
           mercadopago_store_id?: string | null;
           mercadopago_external_pos_id?: string | null;
+          bloqueo_caja_activo?: boolean;
         };
         Update: {
           id?: string;
@@ -95,6 +102,71 @@ export interface Database {
           updated_at?: string;
           mercadopago_store_id?: string | null;
           mercadopago_external_pos_id?: string | null;
+          bloqueo_caja_activo?: boolean;
+        };
+        Relationships: [];
+      };
+      bloqueo_caja_productos: {
+        Row: {
+          id: string;
+          producto_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          producto_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          producto_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      bloqueo_caja_conteos: {
+        Row: {
+          id: string;
+          caja_turno_id: string;
+          usuario_id: string;
+          fecha: string;
+        };
+        Insert: {
+          id?: string;
+          caja_turno_id: string;
+          usuario_id: string;
+          fecha?: string;
+        };
+        Update: {
+          id?: string;
+          caja_turno_id?: string;
+          usuario_id?: string;
+          fecha?: string;
+        };
+        Relationships: [];
+      };
+      bloqueo_caja_conteo_items: {
+        Row: {
+          id: string;
+          bloqueo_caja_conteo_id: string;
+          producto_id: string;
+          stock_sistema: number;
+          stock_contado: number;
+          diferencia: number;
+        };
+        Insert: {
+          id?: string;
+          bloqueo_caja_conteo_id: string;
+          producto_id: string;
+          stock_sistema: number;
+          stock_contado: number;
+        };
+        Update: {
+          id?: string;
+          bloqueo_caja_conteo_id?: string;
+          producto_id?: string;
+          stock_sistema?: number;
+          stock_contado?: number;
         };
         Relationships: [];
       };
@@ -964,6 +1036,13 @@ export interface Database {
           p_observaciones: string | null;
         };
         Returns: Database["public"]["Tables"]["caja_turnos"]["Row"];
+      };
+      registrar_conteo_bloqueo_caja: {
+        Args: {
+          p_turno_id: string;
+          p_items: Json;
+        };
+        Returns: string;
       };
       registrar_merma: {
         Args: {

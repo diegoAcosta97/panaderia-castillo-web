@@ -17,7 +17,7 @@ relevados. Si aparece el modelo original, se compara contra esto y se ajusta.
   (los dos últimos, EPIC 14)
 - `estado_caja_turno`: `abierta` | `cerrada`
 - `estado_venta`: `pendiente_pago` | `completada` | `anulada`
-- `medio_pago`: `efectivo` | `mercado_pago`
+- `medio_pago`: `efectivo` | `mercado_pago` | `sena_pedido` | `tarjeta_debito` | `tarjeta_credito`
 - `estado_pago_medio`: `pendiente` | `acreditado` | `rechazado`
 - `tipo_beneficio_oferta`: `precio_fijo` | `descuento_porcentaje` | `descuento_monto`
 - `tipo_efecto_descuento`: `porcentaje` | `monto_fijo`
@@ -35,6 +35,7 @@ relevados. Si aparece el modelo original, se compara contra esto y se ajusta.
 | telefono | text, nullable | |
 | cuit | text, nullable | no usado todavía, se deja preparado para la integración AFIP futura |
 | updated_at | timestamptz | |
+| bloqueo_caja_activo | boolean | default false -- EPIC 4#E4-5, ver sección "Bloqueo de caja" |
 
 Sin esta tabla no hay dónde imprimir el nombre/dirección del comercio en el comprobante o las
 etiquetas — faltaba en la primera versión de este documento. Las credenciales de Mercado Pago
@@ -131,6 +132,39 @@ Constraint: si `tipo_venta = 'unidad'`, `stock_actual` es entero (check a nivel 
 
 Constraint: a lo sumo un registro con `estado = 'abierta'` a la vez (índice único parcial) — RF-5.5.
 
+## Bloqueo de caja
+
+### `bloqueo_caja_productos`
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| producto_id | uuid, único | FK a `productos.id` -- hasta 10 filas, límite forzado por RLS |
+| created_at | timestamptz | |
+
+### `bloqueo_caja_conteos`
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| caja_turno_id | uuid, único | FK a `caja_turnos.id` -- a lo sumo un conteo por turno |
+| usuario_id | uuid | FK a `perfiles.id`, quien contó |
+| fecha | timestamptz | |
+
+### `bloqueo_caja_conteo_items`
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| bloqueo_caja_conteo_id | uuid | FK a `bloqueo_caja_conteos.id` |
+| producto_id | uuid | FK a `productos.id` |
+| stock_sistema | numeric(12,3) | snapshot al momento del conteo |
+| stock_contado | numeric(12,3) | ingresado manualmente |
+| diferencia | numeric(12,3) | `stock_contado - stock_sistema`, calculada |
+
+Con `configuracion_negocio.bloqueo_caja_activo = true` y al menos un producto en
+`bloqueo_caja_productos`, `cerrar_turno` exige que exista un `bloqueo_caja_conteos` para ese
+turno antes de dejar cerrarlo. A diferencia de `controles_stock`, esto **nunca ajusta stock ni
+pasa por aprobación** — es puramente un registro de auditoría para que el administrador compare
+sistema vs. contado y detecte diferencias (control sorpresivo, no un mecanismo de corrección).
+
 ## Ofertas (combos)
 
 ### `ofertas`
@@ -192,11 +226,11 @@ necesita OR entre condiciones, se agrega un campo de agrupación lógica.
 | numero_comprobante | bigint, único | correlativo global, nunca se reinicia (ver nota AFIP en no-funcionales) |
 | caja_turno_id | uuid | FK a `caja_turnos.id` |
 | usuario_id | uuid | FK a `perfiles.id`, cajero que la realizó |
-| subtotal | numeric(12,2) | suma de renglones antes de beneficios |
-| total_ofertas | numeric(12,2) | beneficio total por combos aplicados, informativo |
-| total_descuentos | numeric(12,2) | beneficio total por descuentos aplicados |
+| subtotal | numeric(12,2) | suma de renglones antes de beneficios (ya incluye el recargo de tarjeta, si corresponde) |
+| total_ofertas | numeric(12,2) | beneficio total por combos aplicados, informativo (con recargo aplicado si corresponde) |
+| total_descuentos | numeric(12,2) | beneficio total por descuentos aplicados (con recargo aplicado si corresponde) |
 | total | numeric(12,2) | monto final a cobrar |
-| estado | estado_venta | default `pendiente_pago` si incluye Mercado Pago, `completada` si es 100% efectivo |
+| estado | estado_venta | default `pendiente_pago` si incluye Mercado Pago, `completada` si es efectivo/tarjeta/seña |
 | fecha | timestamptz | default now() |
 | anulada_por_id | uuid, nullable | FK a `perfiles.id` |
 | fecha_anulacion | timestamptz, nullable | |
@@ -209,7 +243,7 @@ necesita OR entre condiciones, se agrega un campo de agrupación lógica.
 | venta_id | uuid | FK a `ventas.id` |
 | producto_id | uuid | FK a `productos.id` |
 | cantidad | numeric(12,3) | unidades o kg según `tipo_venta` del producto |
-| precio_unitario_snapshot | numeric(12,2) | precio del producto al momento de la venta |
+| precio_unitario_snapshot | numeric(12,2) | precio del producto al momento de la venta, ya con el recargo de tarjeta aplicado si corresponde (EPIC 7#E7-9) -- nunca es un ítem de "recargo" aparte, el precio de cada producto sale directamente inflado |
 | subtotal | numeric(12,2) | `cantidad * precio_unitario_snapshot` |
 
 ### `venta_ofertas_aplicadas`
@@ -236,7 +270,7 @@ necesita OR entre condiciones, se agrega un campo de agrupación lógica.
 | venta_id | uuid | FK a `ventas.id` |
 | medio_pago | medio_pago | |
 | monto | numeric(12,2) | porción de la venta cubierta por este medio |
-| estado_pago | estado_pago_medio | `acreditado` de inmediato para efectivo; `pendiente` → `acreditado`/`rechazado` para MP |
+| estado_pago | estado_pago_medio | `acreditado` de inmediato para efectivo/seña/tarjeta; `pendiente` → `acreditado`/`rechazado` para MP |
 | mp_payment_id | text, nullable | id de pago de Mercado Pago |
 | mp_referencia_externa | text, nullable | referencia propia enviada a MP (para matchear el webhook) |
 | fecha_acreditacion | timestamptz, nullable | |
@@ -367,6 +401,9 @@ productos ──< ingreso_mercaderia_items >── ingresos_mercaderia
 
 caja_turnos ──< ventas
 caja_turnos ──< gastos
+caja_turnos ──< bloqueo_caja_conteos
+productos ──< bloqueo_caja_productos
+productos ──< bloqueo_caja_conteo_items >── bloqueo_caja_conteos
 
 ventas ──< renglones_venta
 ventas ──< venta_medios_pago
@@ -406,3 +443,10 @@ proveedores ──< gastos
   a un envío automático).
 - **Estado inicial de una venta 100% efectivo**: confirmado — `completada` directamente, sin
   pasar por `pendiente_pago`.
+- **Recargo por tarjeta (EPIC 7#E7-9)**: 5% débito / 15% crédito, confirmado con el dueño. Nunca
+  es un ítem aparte del comprobante — se aplica como factor multiplicativo a todo lo que compone
+  el total (renglones, ofertas, descuentos) para que el total final sea exactamente
+  `total_original * factor`. No se puede combinar tarjeta con otro medio de pago en la misma
+  venta. Tarjeta liquida en el momento (mismo trato que efectivo: `completada`/`acreditado`), no
+  pasa por ningún estado pendiente — no hay integración con una pasarela de tarjeta real, es solo
+  el registro de que se cobró con la posnet física del comercio.

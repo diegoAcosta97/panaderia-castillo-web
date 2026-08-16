@@ -12,6 +12,8 @@ const ETIQUETA_MEDIO: Record<string, string> = {
   efectivo: "Efectivo",
   mercado_pago: "Mercado Pago",
   sena_pedido: "Seña (pedido por encargo)",
+  tarjeta_debito: "Tarjeta de débito",
+  tarjeta_credito: "Tarjeta de crédito",
 };
 
 export function Comprobante({

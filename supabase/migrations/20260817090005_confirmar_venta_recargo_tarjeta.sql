@@ -1,0 +1,176 @@
+-- E7-9: recargo por tarjeta de débito (5%) / crédito (15%) (docs/backlog/07-punto-de-venta.md)
+--
+-- El recargo nunca es un renglón aparte (RF acordado con el dueño: "que no sea un item mas el
+-- recargo") -- se aplica como un factor multiplicativo a TODO lo que compone el total (subtotal
+-- de cada renglón, ofertas y descuentos) antes de sumar/restar, así el total final queda
+-- exactamente `total_original * factor` sin importar si hay combos/descuentos en la venta, y
+-- cada renglón del comprobante ya sale con el precio "con recargo" incluido -- no hay una línea
+-- separada de "recargo" en ningún lado. `precio_unitario_snapshot`/`subtotal` de
+-- `renglones_venta` dejan de ser exactamente `productos.precio`/`cantidad * productos.precio`
+-- cuando el medio de pago es tarjeta -- siguen siendo el snapshot real de lo que se cobró, que es
+-- justamente el objetivo de esa columna.
+--
+-- Pago con tarjeta no se puede combinar con otro medio (RF acordado: "no se puede combinar los
+-- pagos") -- si `p_medios_pago` incluye una tarjeta, tiene que ser el único elemento del array.
+
+create or replace function public.confirmar_venta(
+  p_caja_turno_id uuid,
+  p_renglones jsonb,
+  p_ofertas jsonb,
+  p_descuentos jsonb,
+  p_medios_pago jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_usuario_id uuid := auth.uid();
+  v_renglon record;
+  v_producto record;
+  v_subtotal numeric(12, 2) := 0;
+  v_total_ofertas numeric(12, 2) := 0;
+  v_total_descuentos numeric(12, 2) := 0;
+  v_total numeric(12, 2);
+  v_suma_medios numeric(12, 2) := 0;
+  v_estado public.estado_venta;
+  v_venta_id uuid;
+  v_numero_comprobante bigint;
+  v_stock_nuevo numeric(12, 3);
+  v_factor numeric(6, 4) := 1;
+  v_medios_tarjeta int;
+begin
+  if v_usuario_id is null then
+    raise exception 'No hay sesión.';
+  end if;
+
+  if not exists (
+    select 1 from public.caja_turnos where id = p_caja_turno_id and estado = 'abierta'
+  ) then
+    raise exception 'El turno de caja no está abierto.';
+  end if;
+
+  if (select count(*) from jsonb_array_elements(p_renglones)) = 0 then
+    raise exception 'La venta no tiene renglones.';
+  end if;
+
+  select count(*) into v_medios_tarjeta
+  from jsonb_array_elements(p_medios_pago) x
+  where x ->> 'medio_pago' in ('tarjeta_debito', 'tarjeta_credito');
+
+  if v_medios_tarjeta > 0 then
+    if (select count(*) from jsonb_array_elements(p_medios_pago)) <> 1 then
+      raise exception 'El pago con tarjeta no se puede combinar con otro medio de pago.';
+    end if;
+    v_factor := case p_medios_pago -> 0 ->> 'medio_pago'
+      when 'tarjeta_debito' then 1.05
+      when 'tarjeta_credito' then 1.15
+    end;
+  end if;
+
+  -- 1) Bloquear cada producto y validar stock suficiente ANTES de escribir nada. Agrupado por
+  --    producto_id (ver nota de E7-3). v_subtotal ya incluye el recargo (v_factor) para que el
+  --    total final sea consistente con lo que se valida contra p_medios_pago más abajo.
+  for v_renglon in
+    select producto_id, sum(cantidad) as cantidad
+    from jsonb_to_recordset(p_renglones) as x(producto_id uuid, cantidad numeric)
+    group by producto_id
+  loop
+    select * into v_producto from public.productos where id = v_renglon.producto_id for update;
+    if not found then
+      raise exception 'El producto % no existe.', v_renglon.producto_id;
+    end if;
+    if v_producto.controla_stock and v_producto.stock_actual < v_renglon.cantidad then
+      raise exception 'Stock insuficiente para "%": disponible %, pedido %',
+        v_producto.nombre, v_producto.stock_actual, v_renglon.cantidad;
+    end if;
+    v_subtotal := v_subtotal + (v_renglon.cantidad * v_producto.precio * v_factor);
+  end loop;
+
+  select coalesce(sum((x ->> 'monto_beneficio')::numeric), 0) * v_factor into v_total_ofertas
+  from jsonb_array_elements(p_ofertas) x;
+
+  select coalesce(sum((x ->> 'monto_aplicado')::numeric), 0) * v_factor into v_total_descuentos
+  from jsonb_array_elements(p_descuentos) x;
+
+  v_total := v_subtotal - v_total_ofertas - v_total_descuentos;
+
+  select coalesce(sum((x ->> 'monto')::numeric), 0) into v_suma_medios
+  from jsonb_array_elements(p_medios_pago) x;
+
+  if v_suma_medios <> v_total then
+    raise exception 'La suma de los medios de pago (%) no coincide con el total (%).',
+      v_suma_medios, v_total;
+  end if;
+
+  select case
+    when bool_and(x ->> 'medio_pago' in ('efectivo', 'sena_pedido', 'tarjeta_debito', 'tarjeta_credito'))
+      then 'completada'::public.estado_venta
+    else 'pendiente_pago'::public.estado_venta
+  end into v_estado
+  from jsonb_array_elements(p_medios_pago) x;
+
+  insert into public.ventas (
+    caja_turno_id, usuario_id, subtotal, total_ofertas, total_descuentos, total, estado
+  )
+  values (
+    p_caja_turno_id, v_usuario_id, v_subtotal, v_total_ofertas, v_total_descuentos, v_total, v_estado
+  )
+  returning id, numero_comprobante into v_venta_id, v_numero_comprobante;
+
+  -- 2) Renglones (uno por producto, ya agrupado) + descuento de stock (solo si queda
+  --    completada). precio_unitario_snapshot/subtotal ya llevan el recargo aplicado -- es el
+  --    precio real que se cobró por ese producto en esta venta, no el de lista.
+  for v_renglon in
+    select producto_id, sum(cantidad) as cantidad
+    from jsonb_to_recordset(p_renglones) as x(producto_id uuid, cantidad numeric)
+    group by producto_id
+  loop
+    select * into v_producto from public.productos where id = v_renglon.producto_id;
+
+    insert into public.renglones_venta (
+      venta_id, producto_id, cantidad, precio_unitario_snapshot, costo_unitario_snapshot, subtotal
+    )
+    values (v_venta_id, v_renglon.producto_id, v_renglon.cantidad, v_producto.precio * v_factor,
+      v_producto.costo, v_renglon.cantidad * v_producto.precio * v_factor);
+
+    if v_estado = 'completada' and v_producto.controla_stock then
+      v_stock_nuevo := v_producto.stock_actual - v_renglon.cantidad;
+      update public.productos set stock_actual = v_stock_nuevo, updated_at = now()
+        where id = v_producto.id;
+      insert into public.movimientos_stock (producto_id, tipo, cantidad, stock_resultante, referencia_id, usuario_id)
+      values (v_producto.id, 'venta', -v_renglon.cantidad, v_stock_nuevo, v_venta_id, v_usuario_id);
+    end if;
+  end loop;
+
+  insert into public.venta_ofertas_aplicadas (venta_id, oferta_id, veces_aplicada, monto_beneficio)
+  select v_venta_id, (x ->> 'oferta_id')::uuid, (x ->> 'veces_aplicada')::int,
+    (x ->> 'monto_beneficio')::numeric * v_factor
+  from jsonb_array_elements(p_ofertas) x;
+
+  insert into public.venta_descuentos_aplicados (venta_id, descuento_id, monto_aplicado)
+  select v_venta_id, (x ->> 'descuento_id')::uuid, (x ->> 'monto_aplicado')::numeric * v_factor
+  from jsonb_array_elements(p_descuentos) x;
+
+  insert into public.venta_medios_pago (venta_id, medio_pago, monto, estado_pago)
+  select
+    v_venta_id,
+    (x ->> 'medio_pago')::public.medio_pago,
+    (x ->> 'monto')::numeric,
+    case when (x ->> 'medio_pago') in ('efectivo', 'sena_pedido', 'tarjeta_debito', 'tarjeta_credito')
+      then 'acreditado'::public.estado_pago_medio
+      else 'pendiente'::public.estado_pago_medio
+    end
+  from jsonb_array_elements(p_medios_pago) x;
+
+  return jsonb_build_object(
+    'venta_id', v_venta_id,
+    'numero_comprobante', v_numero_comprobante,
+    'estado', v_estado
+  );
+end;
+$$;
+
+revoke all on function public.confirmar_venta(uuid, jsonb, jsonb, jsonb, jsonb) from public;
+grant execute on function public.confirmar_venta(uuid, jsonb, jsonb, jsonb, jsonb) to authenticated;

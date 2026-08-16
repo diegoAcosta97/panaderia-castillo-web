@@ -1,14 +1,17 @@
 import Link from "next/link";
-import { TrendingUp, TrendingDown, Wallet, PackageX, Trophy } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, PackageX, Trophy, ClipboardCheck } from "lucide-react";
 import { getServerSession } from "@/features/auth/services/sessionService";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { getTurnoAbierto } from "@/repositories/cajaTurnosRepository";
 import { sumaVentasEfectivoPorTurno, resumenVentasPorRango, topProductosVendidos } from "@/repositories/ventasRepository";
 import { sumaGastosPorTurno } from "@/repositories/gastosRepository";
 import { sumaPagosEmpleadosPorTurno } from "@/repositories/pagosEmpleadosRepository";
 import { sumaSenasPorTurno } from "@/repositories/pedidosEncargoRepository";
 import { listProductosBajoStock } from "@/repositories/productosRepository";
+import { listControlesStock } from "@/repositories/controlStockRepository";
+import { listIngresosMercaderia } from "@/repositories/ingresoMercaderiaRepository";
 import { formatearMoneda } from "@/lib/format";
 
 function fechaISO(offsetDias = 0): string {
@@ -24,14 +27,27 @@ export default async function AdminHome() {
   const ayer = fechaISO(-1);
   const hace7Dias = fechaISO(-7);
 
-  const [turnoAbierto, resumenHoy, resumenAyer, productosBajoStock, topProductos] =
-    await Promise.all([
-      getTurnoAbierto(supabase),
-      resumenVentasPorRango(supabase, { desde: hoy, hasta: hoy }),
-      resumenVentasPorRango(supabase, { desde: ayer, hasta: ayer }),
-      listProductosBajoStock(supabase),
-      topProductosVendidos(supabase, { desde: hace7Dias, hasta: hoy, limit: 5 }),
-    ]);
+  const [
+    turnoAbierto,
+    resumenHoy,
+    resumenAyer,
+    productosBajoStock,
+    topProductos,
+    controlesStock,
+    ingresosMercaderia,
+  ] = await Promise.all([
+    getTurnoAbierto(supabase),
+    resumenVentasPorRango(supabase, { desde: hoy, hasta: hoy }),
+    resumenVentasPorRango(supabase, { desde: ayer, hasta: ayer }),
+    listProductosBajoStock(supabase),
+    topProductosVendidos(supabase, { desde: hace7Dias, hasta: hoy, limit: 5 }),
+    listControlesStock(supabase),
+    listIngresosMercaderia(supabase),
+  ]);
+
+  const controlesPendientes = controlesStock.filter((c) => c.estado === "pendiente_aprobacion");
+  const ingresosPendientes = ingresosMercaderia.filter((i) => i.estado === "pendiente_aprobacion");
+  const totalPendientes = controlesPendientes.length + ingresosPendientes.length;
 
   let efectivoEsperado: number | null = null;
   if (turnoAbierto) {
@@ -57,6 +73,63 @@ export default async function AdminHome() {
         </p>
         <p className="text-sm text-muted-foreground">Así viene el local hoy.</p>
       </div>
+
+      {totalPendientes > 0 && (
+        <Card className="border-accent/40 bg-accent/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardCheck className="size-4 text-accent" />
+              Pendientes de aprobación ({totalPendientes})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {controlesPendientes.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <p className="text-sm font-medium">
+                  Controles de stock ({controlesPendientes.length})
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {controlesPendientes.map((c) => (
+                    <li key={c.id} className="flex items-center justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">
+                        Iniciado el {new Date(c.fecha_inicio).toLocaleString("es-AR")}
+                      </span>
+                      <Link
+                        href={`/admin/control-stock/${c.id}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Revisar
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {ingresosPendientes.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <p className="text-sm font-medium">
+                  Ingresos de mercadería ({ingresosPendientes.length})
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {ingresosPendientes.map((i) => (
+                    <li key={i.id} className="flex items-center justify-between gap-4 text-sm">
+                      <span className="text-muted-foreground">
+                        Cargado el {new Date(i.fecha).toLocaleString("es-AR")}
+                      </span>
+                      <Link
+                        href={`/admin/ingresos-mercaderia/${i.id}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Revisar
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>

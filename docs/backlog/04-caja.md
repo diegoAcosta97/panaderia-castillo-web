@@ -78,6 +78,52 @@ Apertura, cierre y arqueo de turno. Caja única del local, turnos secuenciales (
 
 ---
 
+### E4-5 — Bloqueo de caja: conteo sorpresivo obligatorio antes de cerrar ✅ Hecho (2026-08-17)
+- **Objetivo:** que el administrador pueda forzar un control de stock sorpresivo (hasta 10
+  productos elegidos por él, de cualquier categoría) que el cajero tiene que contar antes de
+  poder cerrar su turno -- prendible/apagable, y la lista de productos se puede ir cambiando.
+- **Descripción:** interruptor `configuracion_negocio.bloqueo_caja_activo` (columna en la fila
+  única de config, mismo criterio que el resto de EPIC 12) + tabla `bloqueo_caja_productos`
+  (hasta 10, el límite lo hace cumplir el propio `with check` del insert, no solo la UI) editable
+  desde `/admin/bloqueo-caja`. El gate real vive dentro de `cerrar_turno` (SQL, no solo en la
+  UI): si el bloqueo está prendido y hay al menos un producto elegido, exige que exista un
+  `bloqueo_caja_conteos` para ese `caja_turno_id` antes de dejar cerrar -- si no hay ningún
+  producto elegido, activar el interruptor no bloquea nada (un candado sin llave no bloquea).
+  `registrar_conteo_bloqueo_caja` (`SECURITY DEFINER`, sin gate de admin -- lo carga el cajero
+  que abrió el turno) exige contar exactamente la lista vigente, ni un producto de más ni de
+  menos, y rechaza un segundo conteo para el mismo turno. A propósito **no ajusta stock ni pasa
+  por ningún flujo de aprobación** -- es un registro de auditoría (sistema vs. contado, a
+  ciegas, mismo criterio que el conteo de control de stock y que el cierre de caja) para que el
+  administrador compare y detecte diferencias en `/admin/bloqueo-caja`, no un mecanismo de
+  ajuste. `/pos/caja/cierre` redirige a `/pos/caja/cierre/conteo` si hace falta contar todavía
+  (solo para no mostrarle al cajero un formulario que el servidor va a rechazar igual).
+- **Depende de:** E4-3, `03-productos.md#E3-3`, `02-roles.md#E2-2`
+- **Archivos/módulos:**
+  `supabase/migrations/20260817100000_add_bloqueo_caja_config.sql`,
+  `supabase/migrations/20260817100005_create_bloqueo_caja_tables.sql`,
+  `supabase/migrations/20260817100010_create_registrar_conteo_bloqueo_caja_function.sql`,
+  `supabase/migrations/20260817100015_cerrar_turno_bloqueo_caja.sql`,
+  `repositories/{bloqueoCajaRepository,configuracionRepository}.ts`,
+  `features/bloqueo-caja/{actions.ts,components/{BloqueoCajaConfig,ConteoBloqueoCajaForm}.tsx}`,
+  `app/admin/bloqueo-caja/page.tsx`, `app/pos/caja/cierre/{page.tsx,conteo/page.tsx}`
+- **Cambios de base de datos:** columna `configuracion_negocio.bloqueo_caja_activo`, tablas
+  `bloqueo_caja_productos`/`bloqueo_caja_conteos`/`bloqueo_caja_conteo_items`, función
+  `registrar_conteo_bloqueo_caja`, `cerrar_turno` reemplazada con el gate
+- **Criterios de aceptación:** (verificado contra la base real)
+  - [x] Con el bloqueo activo y productos elegidos, `cerrar_turno` rechaza el cierre si no hay
+        conteo para ese turno
+  - [x] `registrar_conteo_bloqueo_caja` rechaza un conteo que no incluya exactamente los
+        productos configurados
+  - [x] Registrar el conteo no modifica `stock_actual` de ningún producto
+  - [x] Un segundo conteo para el mismo turno es rechazado
+  - [x] El límite de 10 productos se hace cumplir a nivel de base (RLS), no solo en la UI —
+        probado insertando un 11º producto con la lista ya en 10
+  - [x] Tras registrar el conteo, `cerrar_turno` deja de rechazar el cierre por este motivo
+        (verificado con un turno de prueba propio, cerrado y limpiado — no se tocó ningún turno
+        real en curso)
+
+---
+
 ## Nota de verificación (2026-08-06)
 
 Ciclo completo probado contra la base real (sin pasar por la UI, directo por API con sesión

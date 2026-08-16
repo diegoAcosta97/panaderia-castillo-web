@@ -16,7 +16,12 @@ export async function getConfiguracionNegocio(
 export async function actualizarConfiguracionNegocio(
   supabase: SupabaseClient<Database>,
   id: string,
-  patch: Partial<Pick<ConfiguracionNegocio, "nombre_comercial" | "direccion" | "telefono" | "cuit">>,
+  patch: Partial<
+    Pick<
+      ConfiguracionNegocio,
+      "nombre_comercial" | "direccion" | "telefono" | "cuit" | "bloqueo_caja_activo"
+    >
+  >,
 ): Promise<void> {
   const { error } = await supabase
     .from("configuracion_negocio")

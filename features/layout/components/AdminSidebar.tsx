@@ -19,6 +19,7 @@ import {
   HandCoins,
   History,
   PackagePlus,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
@@ -39,6 +40,7 @@ const SECCIONES = [
   { href: "/admin/control-stock", label: "Control de stock", icon: ClipboardList },
   { href: "/admin/ingresos-mercaderia", label: "Ingresos de mercadería", icon: PackagePlus },
   { href: "/admin/movimientos-stock", label: "Movimientos de stock", icon: History },
+  { href: "/admin/bloqueo-caja", label: "Bloqueo de caja", icon: Lock },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
 ];
 
@@ -46,7 +48,7 @@ export function AdminSidebar({ session }: { session: Session | null }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-svh w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground print:hidden">
+    <aside className="flex min-h-svh w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground print:hidden">
       <div className="flex items-center gap-2 border-b border-sidebar-border px-4 py-4">
         <ChefHat className="size-6 text-sidebar-primary" />
         <span className="text-sm leading-tight font-semibold">Panadería Castillo</span>

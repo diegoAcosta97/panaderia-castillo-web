@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Banknote, QrCode, Split, ArrowLeft, CircleCheck } from "lucide-react";
+import { Banknote, QrCode, Split, ArrowLeft, CircleCheck, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,17 @@ import type { RenglonCarritoUI } from "@/features/ventas/hooks/useCarrito";
 import type { useResumenVenta } from "@/features/ventas/hooks/useResumenVenta";
 import type { MedioPago } from "@/types/database";
 
-type FormaPago = "efectivo" | "mercado_pago" | "combinado";
+type FormaPago = "efectivo" | "mercado_pago" | "combinado" | "tarjeta_debito" | "tarjeta_credito";
+
+// RF acordado con el dueño: el recargo nunca es un ítem aparte -- confirmar_venta lo aplica como
+// factor a todo lo que compone el total (renglones, ofertas, descuentos), así el comprobante
+// nunca muestra una línea de "recargo" separada. Estos porcentajes tienen que coincidir con los
+// hardcodeados en la migración 20260817090005_confirmar_venta_recargo_tarjeta.sql -- si cambian
+// acá, cambian ahí también.
+const RECARGO_TARJETA: Partial<Record<FormaPago, number>> = {
+  tarjeta_debito: 0.05,
+  tarjeta_credito: 0.15,
+};
 
 export function PantallaCobro({
   cajaTurnoId,
@@ -49,19 +59,26 @@ export function PantallaCobro({
   const { cobrar, error, isLoading } = useCobro();
 
   const total = totalACobrar;
+  const esTarjeta = formaPago === "tarjeta_debito" || formaPago === "tarjeta_credito";
+  const recargoPct = RECARGO_TARJETA[formaPago] ?? 0;
+  const totalConRecargo = Math.round(total * (1 + recargoPct) * 100) / 100;
   const efectivo =
     formaPago === "efectivo" ? total : formaPago === "combinado" ? Number(montoEfectivo) || 0 : 0;
-  const mercadoPago = Math.round((total - efectivo) * 100) / 100;
-  const habilitado = efectivo > 0 || mercadoPago > 0 || total <= 0;
+  const mercadoPago = esTarjeta ? 0 : Math.round((total - efectivo) * 100) / 100;
+  const habilitado = esTarjeta ? total > 0 : efectivo > 0 || mercadoPago > 0 || total <= 0;
   const entregado = Number(montoEntregado) || 0;
   const vuelto = Math.round((entregado - efectivo) * 100) / 100;
 
   async function handleConfirmar() {
     setErrorQr(null);
     const mediosPago: { medio_pago: MedioPago; monto: number }[] = [];
-    if (senaTotal > 0) mediosPago.push({ medio_pago: "sena_pedido", monto: senaTotal });
-    if (efectivo > 0) mediosPago.push({ medio_pago: "efectivo", monto: efectivo });
-    if (mercadoPago > 0) mediosPago.push({ medio_pago: "mercado_pago", monto: mercadoPago });
+    if (esTarjeta) {
+      mediosPago.push({ medio_pago: formaPago, monto: totalConRecargo });
+    } else {
+      if (senaTotal > 0) mediosPago.push({ medio_pago: "sena_pedido", monto: senaTotal });
+      if (efectivo > 0) mediosPago.push({ medio_pago: "efectivo", monto: efectivo });
+      if (mercadoPago > 0) mediosPago.push({ medio_pago: "mercado_pago", monto: mercadoPago });
+    }
 
     const resultado = await cobrar({ cajaTurnoId, renglones, resumen, mediosPago });
     if (!resultado) return;
@@ -148,7 +165,39 @@ export function PantallaCobro({
           <Split className="size-4" />
           Combinado
         </Button>
+        <Button
+          type="button"
+          variant={formaPago === "tarjeta_debito" ? "default" : "outline"}
+          onClick={() => setFormaPago("tarjeta_debito")}
+          disabled={senaTotal > 0}
+        >
+          <CreditCard className="size-4" />
+          Débito
+        </Button>
+        <Button
+          type="button"
+          variant={formaPago === "tarjeta_credito" ? "default" : "outline"}
+          onClick={() => setFormaPago("tarjeta_credito")}
+          disabled={senaTotal > 0}
+        >
+          <CreditCard className="size-4" />
+          Crédito
+        </Button>
       </div>
+
+      {senaTotal > 0 && (
+        <p className="text-sm text-muted-foreground">
+          El pago con tarjeta no está disponible para pedidos con una seña ya pagada.
+        </p>
+      )}
+
+      {esTarjeta && (
+        <p className="text-sm text-muted-foreground">
+          Recargo del {Math.round(recargoPct * 100)}% incluido: total con tarjeta{" "}
+          <span className="font-medium text-foreground">{formatearMoneda(totalConRecargo)}</span>.
+          No se puede combinar con otro medio de pago.
+        </p>
+      )}
 
       {formaPago === "combinado" && (
         <div className="flex max-w-sm flex-col gap-2">
@@ -211,7 +260,7 @@ export function PantallaCobro({
           <CircleCheck className="size-4" />
           {isLoading || generandoQr
             ? "Confirmando..."
-            : `Confirmar venta (${formatearMoneda(total)})`}
+            : `Confirmar venta (${formatearMoneda(esTarjeta ? totalConRecargo : total)})`}
         </Button>
       </div>
     </div>
