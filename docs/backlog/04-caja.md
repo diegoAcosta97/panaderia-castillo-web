@@ -122,6 +122,25 @@ Apertura, cierre y arqueo de turno. Caja única del local, turnos secuenciales (
         (verificado con un turno de prueba propio, cerrado y limpiado — no se tocó ningún turno
         real en curso)
 
+**Fix post-entrega (2026-08-18), encontrado en uso real:** dos bugs en
+`20260817100010_create_registrar_conteo_bloqueo_caja_function.sql`/`...100005_create_bloqueo_caja_tables.sql`,
+corregidos en `20260818090000_fix_bloqueo_caja_permisos.sql`.
+1. `registrar_conteo_bloqueo_caja` exigía que quien cuenta sea quien abrió el turno (o un admin)
+   — en la práctica un turno se puede abrir con una sesión y cerrar con otra (cambio de turno),
+   así que un cajero cerrando un turno que abrió el dueño se encontraba con "No autorizado.".
+   Se sacó esa validación (mismo criterio sin gate de propietario que `registrar_merma`).
+2. Las policies de `select` de `bloqueo_caja_conteos`/`bloqueo_caja_conteo_items` eran
+   admin-only, así que un cajero nunca podía ver que su propio conteo ya había quedado
+   registrado (`getConteoBloqueoCajaPorTurno` le devolvía `null` siempre) — quedaba en loop
+   entre `/pos/caja/cierre` y `/pos/caja/cierre/conteo`, y un segundo intento de contar era
+   rechazado por la función ("Ya se registró..."), sin salida posible desde la UI. Se abrió el
+   `select` a cualquier autenticado, mismo criterio que `bloqueo_caja_productos`.
+
+Ambos verificados contra la base real tras el fix (sin tocar el turno real que estaba
+bloqueado): un cajero que no abrió el turno pudo registrar el conteo, verlo, y cerrar; y la
+policy de select se confirmó abierta insertando un conteo de prueba contra un turno cerrado
+existente y leyéndolo con una sesión de cajero.
+
 ---
 
 ## Nota de verificación (2026-08-06)
