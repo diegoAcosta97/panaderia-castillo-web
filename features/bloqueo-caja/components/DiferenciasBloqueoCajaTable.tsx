@@ -1,12 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Filter } from "lucide-react";
+import { Filter, Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { ListadoImprimible } from "@/components/print/ListadoImprimible";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDiferenciasBloqueoCajaTable } from "@/features/bloqueo-caja/hooks/useDiferenciasBloqueoCajaTable";
+import { listBloqueoCajaDiferencias } from "@/repositories/bloqueoCajaRepository";
+import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 import type { BloqueoCajaDiferencia } from "@/repositories/bloqueoCajaRepository";
 import type { Categoria } from "@/repositories/categoriasRepository";
 import type { Producto } from "@/repositories/productosRepository";
@@ -22,6 +27,45 @@ export function DiferenciasBloqueoCajaTable({
   productos: Producto[];
 }) {
   const table = useDiferenciasBloqueoCajaTable();
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
+  const [listado, setListado] = useState<(string | number)[][] | null>(null);
+
+  useEffect(() => {
+    if (!listado) return;
+    const limpiar = () => setListado(null);
+    window.addEventListener("afterprint", limpiar);
+    window.print();
+    return () => window.removeEventListener("afterprint", limpiar);
+  }, [listado]);
+
+  async function exportarImprimible() {
+    setErrorExport(null);
+    setExportando(true);
+    try {
+      const supabase = createClient();
+      const diferencias = await listBloqueoCajaDiferencias(supabase, {
+        productoId: table.productoId === table.todasValue ? undefined : table.productoId,
+        categoriaId: table.categoriaId === table.todasValue ? undefined : table.categoriaId,
+        desde: table.desde || undefined,
+        hasta: table.hasta || undefined,
+      });
+      setListado(
+        diferencias.map((d) => [
+          new Date(d.fecha).toLocaleString("es-AR"),
+          d.producto_nombre,
+          d.categoria_nombre,
+          d.stock_sistema,
+          d.stock_contado,
+          d.diferencia > 0 ? `+${d.diferencia}` : d.diferencia,
+        ]),
+      );
+    } catch (err) {
+      setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const columns = useMemo<ColumnDef<BloqueoCajaDiferencia, unknown>[]>(
     () => [
@@ -60,7 +104,8 @@ export function DiferenciasBloqueoCajaTable({
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+    <div className="flex flex-col gap-4 print:hidden">
       <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-2">
           <Label htmlFor="diferencias-categoria">Categoría</Label>
@@ -121,7 +166,13 @@ export function DiferenciasBloqueoCajaTable({
             Filtros activos
           </p>
         )}
+        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+          <Printer className="size-4" />
+          {exportando ? "Generando..." : "Exportar listado"}
+        </Button>
       </div>
+
+      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
 
       <DataTable
         columns={columns}
@@ -136,5 +187,13 @@ export function DiferenciasBloqueoCajaTable({
         emptyMessage="Ningún conteo sorpresivo registró diferencias con este filtro."
       />
     </div>
+    {listado && (
+      <ListadoImprimible
+        titulo="Diferencias detectadas -- bloqueo de caja"
+        headers={["Fecha del conteo", "Producto", "Categoría", "Stock sistema", "Stock contado", "Diferencia"]}
+        rows={listado}
+      />
+    )}
+    </>
   );
 }

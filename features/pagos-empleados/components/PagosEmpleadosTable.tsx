@@ -1,12 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Filter } from "lucide-react";
+import { Filter, Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { ListadoImprimible } from "@/components/print/ListadoImprimible";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePagosEmpleadosTable } from "@/features/pagos-empleados/hooks/usePagosEmpleadosTable";
+import { listPagosEmpleados } from "@/repositories/pagosEmpleadosRepository";
+import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 import { formatearMoneda } from "@/lib/format";
 import type { PagoEmpleado } from "@/repositories/pagosEmpleadosRepository";
 import type { Empleado } from "@/repositories/empleadosRepository";
@@ -14,6 +19,43 @@ import type { Empleado } from "@/repositories/empleadosRepository";
 export function PagosEmpleadosTable({ empleados }: { empleados: Empleado[] }) {
   const table = usePagosEmpleadosTable();
   const nombreEmpleado = (id: string) => empleados.find((e) => e.id === id)?.nombre ?? "—";
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
+  const [listado, setListado] = useState<(string | number)[][] | null>(null);
+
+  useEffect(() => {
+    if (!listado) return;
+    const limpiar = () => setListado(null);
+    window.addEventListener("afterprint", limpiar);
+    window.print();
+    return () => window.removeEventListener("afterprint", limpiar);
+  }, [listado]);
+
+  async function exportarImprimible() {
+    setErrorExport(null);
+    setExportando(true);
+    try {
+      const supabase = createClient();
+      const pagos = await listPagosEmpleados(supabase, {
+        empleadoId: table.empleadoId || undefined,
+        desde: table.desde || undefined,
+        hasta: table.hasta || undefined,
+      });
+      setListado(
+        pagos.map((p) => [
+          new Date(p.fecha).toLocaleString("es-AR"),
+          nombreEmpleado(p.empleado_id),
+          p.periodo_desde === p.periodo_hasta ? p.periodo_desde : `${p.periodo_desde} – ${p.periodo_hasta}`,
+          formatearMoneda(p.monto),
+          p.observaciones || "",
+        ]),
+      );
+    } catch (err) {
+      setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const columns = useMemo<ColumnDef<PagoEmpleado, unknown>[]>(
     () => [
@@ -51,7 +93,8 @@ export function PagosEmpleadosTable({ empleados }: { empleados: Empleado[] }) {
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+    <div className="flex flex-col gap-4 print:hidden">
       {/* Select nativo a propósito, mismo criterio que features/gastos/components/GastosTable.tsx. */}
       <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-2">
@@ -94,7 +137,13 @@ export function PagosEmpleadosTable({ empleados }: { empleados: Empleado[] }) {
             Filtros activos
           </p>
         )}
+        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+          <Printer className="size-4" />
+          {exportando ? "Generando..." : "Exportar listado"}
+        </Button>
       </div>
+
+      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
 
       <DataTable
         columns={columns}
@@ -114,5 +163,13 @@ export function PagosEmpleadosTable({ empleados }: { empleados: Empleado[] }) {
         {table.count} {table.count === 1 ? "pago" : "pagos"})
       </p>
     </div>
+    {listado && (
+      <ListadoImprimible
+        titulo="Pagos a empleados"
+        headers={["Fecha", "Empleado", "Período", "Monto", "Observaciones"]}
+        rows={listado}
+      />
+    )}
+    </>
   );
 }

@@ -110,3 +110,20 @@ export async function listBloqueoCajaDiferenciasPaginated(
   if (error) throw error;
   return { data: data ?? [], count: count ?? 0 };
 }
+
+// Sibling sin paginar de listBloqueoCajaDiferenciasPaginated, mismos filtros -- usado para
+// exportar a imprimible el conjunto filtrado completo (no solo la página visible).
+export async function listBloqueoCajaDiferencias(
+  supabase: SupabaseClient<Database>,
+  filtros?: { productoId?: string; categoriaId?: string; desde?: string; hasta?: string },
+): Promise<BloqueoCajaDiferencia[]> {
+  let request = supabase.from("bloqueo_caja_diferencias").select("*");
+  if (filtros?.productoId) request = request.eq("producto_id", filtros.productoId);
+  if (filtros?.categoriaId) request = request.eq("categoria_id", filtros.categoriaId);
+  if (filtros?.desde) request = request.gte("fecha", filtros.desde);
+  if (filtros?.hasta) request = request.lte("fecha", `${filtros.hasta}T23:59:59`);
+
+  const { data, error } = await request.order("fecha", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}

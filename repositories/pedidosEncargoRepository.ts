@@ -197,3 +197,45 @@ export async function buscarPedidosPendientes(
   if (error) throw error;
   return data;
 }
+
+// Sibling sin paginar de listPedidosEncargoPaginated, mismos filtros -- usado para exportar a
+// imprimible el conjunto filtrado completo (no solo la página visible).
+export async function listPedidosEncargo(
+  supabase: SupabaseClient<Database>,
+  filtros?: { estado?: PedidoEncargo["estado"]; texto?: string },
+): Promise<PedidoEncargoConDetalle[]> {
+  let request = supabase.from("pedidos_encargo").select("*");
+  if (filtros?.estado) request = request.eq("estado", filtros.estado);
+  if (filtros?.texto) {
+    request = request.or(
+      `cliente_nombre.ilike.%${filtros.texto}%,cliente_telefono.ilike.%${filtros.texto}%`,
+    );
+  }
+
+  const { data, error } = await request.order("fecha_entrega", { ascending: true });
+  if (error) throw error;
+  const pedidos = data ?? [];
+  if (pedidos.length === 0) return [];
+
+  const pedidoIds = pedidos.map((p) => p.id);
+  const [{ data: items, error: itemsError }, { data: senas, error: senasError }] =
+    await Promise.all([
+      supabase.from("pedido_encargo_items").select("pedido_id, producto_id, cantidad").in(
+        "pedido_id",
+        pedidoIds,
+      ),
+      supabase.from("senas_pedidos").select("pedido_id, monto").in("pedido_id", pedidoIds),
+    ]);
+  if (itemsError) throw itemsError;
+  if (senasError) throw senasError;
+
+  return pedidos.map((pedido) => ({
+    ...pedido,
+    items: (items ?? [])
+      .filter((i) => i.pedido_id === pedido.id)
+      .map((i) => ({ producto_id: i.producto_id, cantidad: Number(i.cantidad) })),
+    sena_total: (senas ?? [])
+      .filter((s) => s.pedido_id === pedido.id)
+      .reduce((acc, s) => acc + Number(s.monto), 0),
+  }));
+}

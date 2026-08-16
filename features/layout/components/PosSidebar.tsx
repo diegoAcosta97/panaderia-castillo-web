@@ -14,6 +14,7 @@ import {
   CalendarClock,
   History,
   ClipboardList,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
@@ -34,7 +35,7 @@ const SECCIONES = [
 // Reemplaza PosTopBar: mismo patrón que AdminSidebar, pero con un fondo distinto (marrón cálido
 // en vez del gris casi negro del admin) para que a simple vista se note quién está logueado, sin
 // tener que desloguearse para chequear.
-export function PosSidebar() {
+export function PosSidebar({ esAdmin = false }: { esAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -43,6 +44,16 @@ export function PosSidebar() {
         <ChefHat className="size-6 text-[#e65100]" />
         <span className="text-sm leading-tight font-semibold">Panadería Castillo</span>
       </div>
+
+      {esAdmin && (
+        <Link
+          href="/admin"
+          className="flex items-center gap-2.5 border-b border-[#4a3520] px-4 py-3 text-sm font-medium text-[#fdfbf7]/80 transition-colors hover:bg-[#4a3520] hover:text-[#fdfbf7]"
+        >
+          <ArrowLeft className="size-4 shrink-0" />
+          Volver al panel
+        </Link>
+      )}
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
         {SECCIONES.map(({ href, label, icon: Icon, exact }) => {

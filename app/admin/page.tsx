@@ -147,7 +147,7 @@ export default async function AdminHome() {
                 <CalendarClock className="size-4 text-muted-foreground" />
                 Próximos pedidos a entregar
               </span>
-              <Link href="/pos/pedidos" className="text-sm font-normal underline">
+              <Link href="/admin/pedidos" className="text-sm font-normal underline">
                 Ver todos
               </Link>
             </CardTitle>

@@ -20,6 +20,7 @@ import {
   History,
   PackagePlus,
   Lock,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
@@ -37,6 +38,7 @@ const SECCIONES = [
   { href: "/admin/ofertas", label: "Ofertas", icon: Percent },
   { href: "/admin/descuentos", label: "Descuentos", icon: Tag },
   { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
+  { href: "/admin/pedidos", label: "Pedidos por encargo", icon: CalendarClock },
   { href: "/admin/control-stock", label: "Control de stock", icon: ClipboardList },
   { href: "/admin/ingresos-mercaderia", label: "Ingresos de mercadería", icon: PackagePlus },
   { href: "/admin/movimientos-stock", label: "Movimientos de stock", icon: History },

@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { ListadoImprimible } from "@/components/print/ListadoImprimible";
 import { Checkbox } from "@/components/ui/checkbox";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProductoDialog } from "@/features/productos/components/ProductoDialog";
 import { actualizarProducto } from "@/features/productos/actions";
 import { useProductosTable } from "@/features/productos/hooks/useProductosTable";
+import { listProductos } from "@/repositories/productosRepository";
+import { createClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/lib/errors";
 import { throwIfActionError } from "@/lib/actionResult";
 import { formatearMoneda } from "@/lib/format";
 import type { Categoria } from "@/repositories/categoriasRepository";
@@ -47,6 +52,44 @@ export function ProductosTable({
 }) {
   const table = useProductosTable();
   const nombreCategoria = (id: string) => categorias.find((c) => c.id === id)?.nombre ?? "—";
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
+  const [listado, setListado] = useState<(string | number)[][] | null>(null);
+
+  useEffect(() => {
+    if (!listado) return;
+    const limpiar = () => setListado(null);
+    window.addEventListener("afterprint", limpiar);
+    window.print();
+    return () => window.removeEventListener("afterprint", limpiar);
+  }, [listado]);
+
+  async function exportarImprimible() {
+    setErrorExport(null);
+    setExportando(true);
+    try {
+      const supabase = createClient();
+      const productos = await listProductos(supabase, {
+        categoriaId: table.categoriaId === table.todasValue ? undefined : table.categoriaId,
+        nombre: table.nombreInput || undefined,
+        activo: table.activo === table.todosActivoValue ? undefined : table.activo === "true",
+      });
+      setListado(
+        productos.map((p) => [
+          p.nombre,
+          nombreCategoria(p.categoria_id),
+          p.tipo_venta === "peso" ? "Peso (kg)" : "Unidad",
+          formatearMoneda(p.precio),
+          p.controla_stock ? (p.stock_actual ?? "") : "sin control",
+          p.activo ? "Sí" : "No",
+        ]),
+      );
+    } catch (err) {
+      setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const columns = useMemo<ColumnDef<Producto, unknown>[]>(
     () => [
@@ -98,7 +141,8 @@ export function ProductosTable({
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+    <div className="flex flex-col gap-4 print:hidden">
       <div className="flex flex-wrap items-end justify-between gap-2">
         {/* Selects nativos a propósito, mismo criterio que features/gastos/components/GastosTable.tsx. */}
         <div className="flex flex-wrap items-end gap-2">
@@ -150,9 +194,16 @@ export function ProductosTable({
           <Link href="/admin/productos/reposicion" className={buttonVariants({ variant: "outline" })}>
             Reposición
           </Link>
+          <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+            <Printer className="size-4" />
+            {exportando ? "Generando..." : "Exportar listado"}
+          </Button>
           <ProductoDialog categorias={categorias} onSaved={table.refetch} />
         </div>
       </div>
+
+      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
+
       <DataTable
         columns={columns}
         data={table.data}
@@ -172,5 +223,13 @@ export function ProductosTable({
         }
       />
     </div>
+    {listado && (
+      <ListadoImprimible
+        titulo="Productos"
+        headers={["Nombre", "Categoría", "Venta", "Precio", "Stock", "Activo"]}
+        rows={listado}
+      />
+    )}
+    </>
   );
 }

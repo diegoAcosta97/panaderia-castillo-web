@@ -21,8 +21,14 @@ const MAX_INTENTOS_CODIGO_BARRAS = 5;
 
 export async function listProductos(
   supabase: SupabaseClient<Database>,
+  filtros?: { categoriaId?: string; nombre?: string; activo?: boolean },
 ): Promise<Producto[]> {
-  const { data, error } = await supabase.from("productos").select("*").order("nombre");
+  let request = supabase.from("productos").select("*");
+  if (filtros?.categoriaId) request = request.eq("categoria_id", filtros.categoriaId);
+  if (filtros?.nombre) request = request.ilike("nombre", `%${filtros.nombre}%`);
+  if (filtros?.activo !== undefined) request = request.eq("activo", filtros.activo);
+
+  const { data, error } = await request.order("nombre");
   if (error) throw error;
   return data;
 }

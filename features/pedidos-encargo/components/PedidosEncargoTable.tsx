@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Filter, Ban } from "lucide-react";
+import { Filter, Ban, Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { ListadoImprimible } from "@/components/print/ListadoImprimible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { usePedidosEncargoTable } from "@/features/pedidos-encargo/hooks/usePedidosEncargoTable";
 import { RegistrarSenaDialog } from "@/features/pedidos-encargo/components/RegistrarSenaDialog";
-import { cancelarPedidoEncargo } from "@/repositories/pedidosEncargoRepository";
+import { cancelarPedidoEncargo, listPedidosEncargo } from "@/repositories/pedidosEncargoRepository";
 import { createClient } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/lib/errors";
 import { formatearMoneda } from "@/lib/format";
@@ -32,12 +33,56 @@ const ETIQUETA_ESTADO: Record<string, string> = {
 export function PedidosEncargoTable({ productos }: { productos: Producto[] }) {
   const table = usePedidosEncargoTable();
   const [error, setError] = useState<string | null>(null);
+  const [exportando, setExportando] = useState(false);
+  const [errorExport, setErrorExport] = useState<string | null>(null);
+  const [listado, setListado] = useState<(string | number)[][] | null>(null);
 
   const totalEstimado = (pedido: PedidoEncargoConDetalle) =>
     pedido.items.reduce((acc, item) => {
       const producto = productos.find((p) => p.id === item.producto_id);
       return acc + (producto ? Number(producto.precio) * Number(item.cantidad) : 0);
     }, 0);
+
+  useEffect(() => {
+    if (!listado) return;
+    const limpiar = () => setListado(null);
+    window.addEventListener("afterprint", limpiar);
+    window.print();
+    return () => window.removeEventListener("afterprint", limpiar);
+  }, [listado]);
+
+  async function exportarImprimible() {
+    setErrorExport(null);
+    setExportando(true);
+    try {
+      const supabase = createClient();
+      const pedidos = await listPedidosEncargo(supabase, {
+        estado: table.estado === table.todosValue ? undefined : (table.estado as PedidoEncargoConDetalle["estado"]),
+        texto: table.texto || undefined,
+      });
+      setListado(
+        pedidos.map((p) => [
+          p.cliente_nombre,
+          p.cliente_telefono || "",
+          new Date(`${p.fecha_entrega}T00:00:00`).toLocaleDateString("es-AR"),
+          p.items
+            .map((item) => {
+              const producto = productos.find((prod) => prod.id === item.producto_id);
+              return `${item.cantidad} ${producto?.nombre ?? "—"}`;
+            })
+            .join(", "),
+          formatearMoneda(totalEstimado(p)),
+          formatearMoneda(p.sena_total),
+          formatearMoneda(totalEstimado(p) - p.sena_total),
+          ETIQUETA_ESTADO[p.estado] ?? p.estado,
+        ]),
+      );
+    } catch (err) {
+      setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   async function handleCancelar(pedidoId: string) {
     setError(null);
@@ -119,7 +164,8 @@ export function PedidosEncargoTable({ productos }: { productos: Producto[] }) {
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+    <div className="flex flex-col gap-4 print:hidden">
       <div className="flex flex-wrap items-end gap-2">
         <div className="grid gap-2">
           <Label htmlFor="pedido-estado">Estado</Label>
@@ -152,9 +198,14 @@ export function PedidosEncargoTable({ productos }: { productos: Producto[] }) {
             Filtros activos
           </p>
         )}
+        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+          <Printer className="size-4" />
+          {exportando ? "Generando..." : "Exportar listado"}
+        </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
 
       <DataTable
         columns={columns}
@@ -169,5 +220,13 @@ export function PedidosEncargoTable({ productos }: { productos: Producto[] }) {
         emptyMessage="No hay pedidos que coincidan con el filtro."
       />
     </div>
+    {listado && (
+      <ListadoImprimible
+        titulo="Pedidos por encargo"
+        headers={["Cliente", "Teléfono", "Entrega", "Productos", "Total estimado", "Seña cobrada", "Saldo", "Estado"]}
+        rows={listado}
+      />
+    )}
+    </>
   );
 }
