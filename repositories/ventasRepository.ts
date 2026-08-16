@@ -368,6 +368,84 @@ export async function topProductosVendidos(
     .slice(0, limit);
 }
 
+export interface VentasPorDiaCategoria {
+  dias: string[];
+  categorias: { id: string; nombre: string }[];
+  matriz: number[][];
+}
+
+function enumerarDias(desde: string, hasta: string): string[] {
+  const dias: string[] = [];
+  const cursor = new Date(`${desde}T00:00:00Z`);
+  const fin = new Date(`${hasta}T00:00:00Z`);
+  while (cursor <= fin) {
+    dias.push(cursor.toISOString().slice(0, 10));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dias;
+}
+
+// Dashboard (/admin): monto vendido por día x categoría en un rango, para el gráfico de barras
+// agrupadas. Mismo criterio de agregación en JS que resumenVentasPorRango/topProductosVendidos
+// (listVentas + renglones_venta, sin vista/RPC nueva). Categorías en orden fijo (alfabético) para
+// que el color de cada una no cambie según los datos del rango.
+export async function ventasPorDiaYCategoria(
+  supabase: SupabaseClient<Database>,
+  { desde, hasta }: { desde: string; hasta: string },
+): Promise<VentasPorDiaCategoria> {
+  const dias = enumerarDias(desde, hasta);
+
+  const { data: categorias, error: categoriasError } = await supabase
+    .from("categorias")
+    .select("id, nombre")
+    .eq("activo", true)
+    .order("nombre");
+  if (categoriasError) throw categoriasError;
+
+  const matrizVacia = () => categorias.map(() => dias.map(() => 0));
+
+  const ventas = await listVentas(supabase, { desde, hasta });
+  const completadas = ventas.filter((v) => v.estado === "completada");
+  if (completadas.length === 0) {
+    return { dias, categorias, matriz: matrizVacia() };
+  }
+
+  const diaPorVenta = new Map(completadas.map((v) => [v.id, v.fecha.slice(0, 10)]));
+
+  const { data: renglones, error: renglonesError } = await supabase
+    .from("renglones_venta")
+    .select("venta_id, producto_id, subtotal")
+    .in(
+      "venta_id",
+      completadas.map((v) => v.id),
+    );
+  if (renglonesError) throw renglonesError;
+
+  const productoIds = Array.from(new Set(renglones.map((r) => r.producto_id)));
+  const { data: productos, error: productosError } = await supabase
+    .from("productos")
+    .select("id, categoria_id")
+    .in("id", productoIds);
+  if (productosError) throw productosError;
+  const categoriaPorProducto = new Map(productos.map((p) => [p.id, p.categoria_id]));
+
+  const indexDia = new Map(dias.map((d, i) => [d, i]));
+  const indexCategoria = new Map(categorias.map((c, i) => [c.id, i]));
+  const matriz = matrizVacia();
+
+  for (const r of renglones) {
+    const dia = diaPorVenta.get(r.venta_id);
+    const categoriaId = categoriaPorProducto.get(r.producto_id);
+    if (dia === undefined || categoriaId === undefined) continue;
+    const di = indexDia.get(dia);
+    const ci = indexCategoria.get(categoriaId);
+    if (di === undefined || ci === undefined) continue;
+    matriz[ci][di] += Number(r.subtotal);
+  }
+
+  return { dias, categorias, matriz };
+}
+
 export interface ListVentasPaginadoParams {
   page: number;
   pageSize: number;

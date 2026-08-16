@@ -5,7 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { getTurnoAbierto } from "@/repositories/cajaTurnosRepository";
-import { sumaVentasEfectivoPorTurno, resumenVentasPorRango, topProductosVendidos } from "@/repositories/ventasRepository";
+import {
+  sumaVentasEfectivoPorTurno,
+  resumenVentasPorRango,
+  topProductosVendidos,
+  ventasPorDiaYCategoria,
+} from "@/repositories/ventasRepository";
+import { VentasPorCategoriaChart } from "@/features/dashboard/components/VentasPorCategoriaChart";
 import { sumaGastosPorTurno } from "@/repositories/gastosRepository";
 import { sumaPagosEmpleadosPorTurno } from "@/repositories/pagosEmpleadosRepository";
 import { sumaSenasPorTurno, listPedidosEncargoPaginated } from "@/repositories/pedidosEncargoRepository";
@@ -28,6 +34,7 @@ export default async function AdminHome() {
   const hoy = fechaISO(0);
   const ayer = fechaISO(-1);
   const hace7Dias = fechaISO(-7);
+  const hace29Dias = fechaISO(-29);
 
   const [
     turnoAbierto,
@@ -35,6 +42,7 @@ export default async function AdminHome() {
     resumenAyer,
     productosBajoStock,
     topProductos,
+    ventasPorCategoria,
     controlesStock,
     ingresosMercaderia,
     proximosPedidos,
@@ -44,6 +52,7 @@ export default async function AdminHome() {
     resumenVentasPorRango(supabase, { desde: ayer, hasta: ayer }),
     listProductosBajoStock(supabase),
     topProductosVendidos(supabase, { desde: hace7Dias, hasta: hoy, limit: 5 }),
+    ventasPorDiaYCategoria(supabase, { desde: hace29Dias, hasta: hoy }),
     listControlesStock(supabase),
     listIngresosMercaderia(supabase),
     listPedidosEncargoPaginated(supabase, {
@@ -282,6 +291,15 @@ export default async function AdminHome() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Ventas por categoría (últimos 30 días)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VentasPorCategoriaChart {...ventasPorCategoria} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
