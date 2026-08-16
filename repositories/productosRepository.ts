@@ -74,15 +74,16 @@ export async function listProductosBajoStock(
   return data.filter((p) => p.stock_actual !== null && p.stock_actual < p.stock_minimo!);
 }
 
-// E11-2: productos elegibles para un conteo de stock -- solo los que controlan stock (RF-9.1).
+// E11-2: productos elegibles para un conteo de stock -- solo los que controlan stock (RF-9.1),
+// de la categoría elegida. Sin filtro de `activo`: un conteo físico cuenta lo que hay en el
+// estante sin distinguir activo/inactivo.
 export async function listProductosControlaStock(
   supabase: SupabaseClient<Database>,
+  categoriaId?: string,
 ): Promise<Producto[]> {
-  const { data, error } = await supabase
-    .from("productos")
-    .select("*")
-    .eq("controla_stock", true)
-    .order("nombre");
+  let request = supabase.from("productos").select("*").eq("controla_stock", true);
+  if (categoriaId) request = request.eq("categoria_id", categoriaId);
+  const { data, error } = await request.order("nombre");
   if (error) throw error;
   return data;
 }
