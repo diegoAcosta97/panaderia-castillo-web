@@ -16,12 +16,29 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatearMoneda } from "@/lib/format";
 import type { Venta } from "@/repositories/ventasRepository";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
+import type { MedioPago } from "@/types/database";
 
 const ETIQUETA_ESTADO: Record<string, string> = {
   completada: "Completada",
   pendiente_pago: "Pendiente de pago",
   anulada: "Anulada",
 };
+
+const ETIQUETA_MEDIO: Record<MedioPago, string> = {
+  efectivo: "Efectivo",
+  mercado_pago: "Mercado Pago",
+  sena_pedido: "Seña (pedido por encargo)",
+  tarjeta_debito: "Tarjeta de débito",
+  tarjeta_credito: "Tarjeta de crédito",
+};
+
+const MEDIOS_PAGO: MedioPago[] = [
+  "efectivo",
+  "mercado_pago",
+  "tarjeta_debito",
+  "tarjeta_credito",
+  "sena_pedido",
+];
 
 export function VentasTable({
   turnos,
@@ -52,18 +69,37 @@ export function VentasTable({
         cajaTurnoId: table.cajaTurnoId || undefined,
         desde: table.desde || undefined,
         hasta: table.hasta || undefined,
+        medioPago: table.medioPago || undefined,
       });
-      setListado(
-        ventas.map((v) => [
-          v.numero_comprobante,
-          new Date(v.fecha).toLocaleString("es-AR"),
-          formatearMoneda(v.subtotal),
-          formatearMoneda(v.total_ofertas),
-          formatearMoneda(v.total_descuentos),
-          formatearMoneda(v.total),
-          ETIQUETA_ESTADO[v.estado] ?? v.estado,
-        ]),
-      );
+      const filas: (string | number)[][] = ventas.map((v) => [
+        v.numero_comprobante,
+        new Date(v.fecha).toLocaleString("es-AR"),
+        formatearMoneda(v.subtotal),
+        formatearMoneda(v.total_ofertas),
+        formatearMoneda(v.total_descuentos),
+        formatearMoneda(v.total),
+        ETIQUETA_ESTADO[v.estado] ?? v.estado,
+      ]);
+      if (table.hayFiltro && table.resumen) {
+        filas.push(["", "", "", "", "", "", ""]);
+        for (const s of table.resumen.subtotalesPorMedioPago) {
+          filas.push([
+            "",
+            table.resumen.subtotalesPorMedioPago.length > 1
+              ? `Subtotal ${ETIQUETA_MEDIO[s.medioPago]}`
+              : `Total ${ETIQUETA_MEDIO[s.medioPago]}`,
+            "",
+            "",
+            "",
+            formatearMoneda(s.monto),
+            "",
+          ]);
+        }
+        if (table.resumen.subtotalesPorMedioPago.length > 1) {
+          filas.push(["", "Total general", "", "", "", formatearMoneda(table.resumen.total), ""]);
+        }
+      }
+      setListado(filas);
     } catch (err) {
       setErrorExport(getErrorMessage(err, "No se pudo generar el listado."));
     } finally {
@@ -151,6 +187,22 @@ export function VentasTable({
             onChange={(e) => table.setHasta(e.target.value)}
           />
         </div>
+        <div className="grid gap-2">
+          <Label htmlFor="medioPago">Tipo de cobro</Label>
+          <select
+            id="medioPago"
+            value={table.medioPago}
+            onChange={(e) => table.setMedioPago(e.target.value as MedioPago | "")}
+            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          >
+            <option value="">Todos</option>
+            {MEDIOS_PAGO.map((m) => (
+              <option key={m} value={m}>
+                {ETIQUETA_MEDIO[m]}
+              </option>
+            ))}
+          </select>
+        </div>
         <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
           <Printer className="size-4" />
           {exportando ? "Generando..." : "Exportar listado"}
@@ -171,6 +223,40 @@ export function VentasTable({
         onSortingChange={table.setSorting}
         emptyMessage="No hay ventas que coincidan con el filtro."
       />
+
+      {table.hayFiltro && (
+        <div className="flex flex-col gap-1 rounded-lg border p-4 text-sm">
+          {table.resumenLoading ? (
+            <span className="text-muted-foreground">Calculando total...</span>
+          ) : table.resumen && table.resumen.subtotalesPorMedioPago.length > 0 ? (
+            <>
+              {table.resumen.subtotalesPorMedioPago.length > 1 ? (
+                <>
+                  {table.resumen.subtotalesPorMedioPago.map((s) => (
+                    <div key={s.medioPago} className="flex justify-between text-muted-foreground">
+                      <span>Subtotal {ETIQUETA_MEDIO[s.medioPago]}</span>
+                      <span>{formatearMoneda(s.monto)}</span>
+                    </div>
+                  ))}
+                  <div className="mt-1 flex justify-between border-t pt-1 text-base font-semibold">
+                    <span>Total general</span>
+                    <span>{formatearMoneda(table.resumen.total)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between text-base font-semibold">
+                  <span>Total {ETIQUETA_MEDIO[table.resumen.subtotalesPorMedioPago[0].medioPago]}</span>
+                  <span>{formatearMoneda(table.resumen.total)}</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground">
+              No hay ventas completadas que coincidan con el filtro.
+            </span>
+          )}
+        </div>
+      )}
     </div>
     {listado && (
       <ListadoImprimible

@@ -8,6 +8,15 @@ export type VentaDescuentoAplicado =
   Database["public"]["Tables"]["venta_descuentos_aplicados"]["Row"];
 export type VentaMedioPago = Database["public"]["Tables"]["venta_medios_pago"]["Row"];
 
+// Pela el `venta_medios_pago` embebido que trae el join `!inner` usado para filtrar por
+// medioPago (listVentas/listVentasPaginated) -- las filas devueltas deben tener la forma exacta
+// de `Venta`, sin ese campo extra.
+function sinMediosPagoEmbebidos(row: Venta & { venta_medios_pago?: unknown }): Venta {
+  const venta = { ...row };
+  delete venta.venta_medios_pago;
+  return venta;
+}
+
 export interface RenglonInput {
   producto_id: string;
   cantidad: number;
@@ -240,19 +249,81 @@ export async function sumaVentasEfectivoPorTurno(
 
 // Admin (E7-8): historial completo. Un cajero solo vería lo suyo/turno abierto de todos modos
 // (RLS de ventas_select, docs/backlog/07-punto-de-venta.md#E7-1).
+//
+// `medioPago` filtra por join embebido (`venta_medios_pago!inner`) en vez de traer todo y filtrar
+// en JS -- una venta "combinado" tiene como mucho una fila por medio_pago (confirmar_venta nunca
+// inserta el mismo medio dos veces en la misma venta), así que el join no duplica filas.
 export async function listVentas(
   supabase: SupabaseClient<Database>,
-  filtros?: { cajaTurnoId?: string; desde?: string; hasta?: string },
+  filtros?: { cajaTurnoId?: string; desde?: string; hasta?: string; medioPago?: MedioPago },
 ): Promise<Venta[]> {
-  let query = supabase.from("ventas").select("*").order("fecha", { ascending: false });
+  let query = filtros?.medioPago
+    ? supabase.from("ventas").select("*, venta_medios_pago!inner(medio_pago)")
+    : supabase.from("ventas").select("*");
+  query = query.order("fecha", { ascending: false });
 
   if (filtros?.cajaTurnoId) query = query.eq("caja_turno_id", filtros.cajaTurnoId);
   if (filtros?.desde) query = query.gte("fecha", filtros.desde);
   if (filtros?.hasta) query = query.lte("fecha", `${filtros.hasta}T23:59:59`);
+  if (filtros?.medioPago) query = query.eq("venta_medios_pago.medio_pago", filtros.medioPago);
 
   const { data, error } = await query;
   if (error) throw error;
-  return data;
+  return ((data ?? []) as (Venta & { venta_medios_pago?: unknown })[]).map(sinMediosPagoEmbebidos);
+}
+
+export interface ResumenVentasFiltro {
+  total: number;
+  subtotalesPorMedioPago: { medioPago: MedioPago; monto: number }[];
+}
+
+// /admin/ventas: total del listado filtrado (turno/fecha/medio de pago), para mostrar al pie de
+// la tabla -- no depende de la paginación, se calcula sobre todo el filtro. Solo cuenta ventas
+// `completada` (mismo criterio que resumenVentasPorRango/sumaVentasEfectivoPorTurno): una
+// pendiente_pago todavía no cobró nada y una anulada ya se revirtió. Si no se filtra por medio de
+// pago, se desglosa el total en un subtotal por cada medio presente (una venta "combinado" aporta
+// a más de un subtotal, la suma de todos los subtotales da el mismo total general porque
+// confirmar_venta ya garantiza que los medios de pago suman el total de la venta).
+export async function resumenVentasFiltro(
+  supabase: SupabaseClient<Database>,
+  filtros: { cajaTurnoId?: string; desde?: string; hasta?: string; medioPago?: MedioPago },
+): Promise<ResumenVentasFiltro> {
+  const ventas = await listVentas(supabase, {
+    cajaTurnoId: filtros.cajaTurnoId,
+    desde: filtros.desde,
+    hasta: filtros.hasta,
+  });
+  const completadas = ventas.filter((v) => v.estado === "completada");
+  if (completadas.length === 0) return { total: 0, subtotalesPorMedioPago: [] };
+
+  const { data: medios, error } = await supabase
+    .from("venta_medios_pago")
+    .select("medio_pago, monto")
+    .in(
+      "venta_id",
+      completadas.map((v) => v.id),
+    );
+  if (error) throw error;
+
+  if (filtros.medioPago) {
+    const total = medios
+      .filter((m) => m.medio_pago === filtros.medioPago)
+      .reduce((acc, m) => acc + Number(m.monto), 0);
+    return { total, subtotalesPorMedioPago: [{ medioPago: filtros.medioPago, monto: total }] };
+  }
+
+  const porMedio = new Map<MedioPago, number>();
+  for (const m of medios) {
+    porMedio.set(m.medio_pago, (porMedio.get(m.medio_pago) ?? 0) + Number(m.monto));
+  }
+
+  return {
+    total: completadas.reduce((acc, v) => acc + Number(v.total), 0),
+    subtotalesPorMedioPago: Array.from(porMedio.entries()).map(([medioPago, monto]) => ({
+      medioPago,
+      monto,
+    })),
+  };
 }
 
 export interface ResumenVentasRango {
@@ -452,22 +523,29 @@ export interface ListVentasPaginadoParams {
   cajaTurnoId?: string;
   desde?: string;
   hasta?: string;
+  medioPago?: MedioPago;
   sort?: { column: string; ascending: boolean };
 }
 
 // Listado paginado/ordenado server-side para el DataTable de /admin/ventas (mismos filtros que
-// listVentas, aplicados como builder calls en vez de leer searchParams).
+// listVentas, aplicados como builder calls en vez de leer searchParams). `medioPago` usa el mismo
+// join embebido que listVentas -- ver comentario ahí.
 export async function listVentasPaginated(
   supabase: SupabaseClient<Database>,
-  { page, pageSize, cajaTurnoId, desde, hasta, sort }: ListVentasPaginadoParams,
+  { page, pageSize, cajaTurnoId, desde, hasta, medioPago, sort }: ListVentasPaginadoParams,
 ): Promise<{ data: Venta[]; count: number }> {
   const from = page * pageSize;
   const to = from + pageSize - 1;
 
-  let request = supabase.from("ventas").select("*", { count: "exact" });
+  let request = medioPago
+    ? supabase
+        .from("ventas")
+        .select("*, venta_medios_pago!inner(medio_pago)", { count: "exact" })
+    : supabase.from("ventas").select("*", { count: "exact" });
   if (cajaTurnoId) request = request.eq("caja_turno_id", cajaTurnoId);
   if (desde) request = request.gte("fecha", desde);
   if (hasta) request = request.lte("fecha", `${hasta}T23:59:59`);
+  if (medioPago) request = request.eq("venta_medios_pago.medio_pago", medioPago);
 
   request = sort
     ? request.order(sort.column, { ascending: sort.ascending })
@@ -475,5 +553,8 @@ export async function listVentasPaginated(
 
   const { data, error, count } = await request.range(from, to);
   if (error) throw error;
-  return { data: data ?? [], count: count ?? 0 };
+  const rows = ((data ?? []) as (Venta & { venta_medios_pago?: unknown })[]).map(
+    sinMediosPagoEmbebidos,
+  );
+  return { data: rows, count: count ?? 0 };
 }
