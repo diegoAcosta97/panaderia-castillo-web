@@ -29,6 +29,21 @@ const PLOT_HEIGHT = 220;
 const X_LABELS_HEIGHT = 24;
 const Y_AXIS_WIDTH = 60;
 
+// Pedido del dueño: si un negocio recién arrancó a usar el sistema, la mayoría de los últimos 30
+// días no tiene ninguna venta -- mostrar esos días vacíos solo agrega huecos con la fecha sin
+// ninguna barra debajo. Se sacan del todo (no solo se ocultan las barras) para que el eje
+// horizontal quede compacto y cada fecha que se ve tenga datos reales.
+function sacarDiasSinDatos(datos: VentasPorDiaCategoria): VentasPorDiaCategoria {
+  const indicesConDatos = datos.dias
+    .map((_, di) => di)
+    .filter((di) => datos.matriz.some((fila) => fila[di] > 0));
+  return {
+    categorias: datos.categorias,
+    dias: indicesConDatos.map((di) => datos.dias[di]),
+    matriz: datos.matriz.map((fila) => indicesConDatos.map((di) => fila[di])),
+  };
+}
+
 function foldCategorias(datos: VentasPorDiaCategoria): VentasPorDiaCategoria {
   if (datos.categorias.length <= MAX_SLOTS) return datos;
   const categorias = [
@@ -74,7 +89,7 @@ function diaLargo(iso: string): string {
 }
 
 export function VentasPorCategoriaChart(props: VentasPorDiaCategoria) {
-  const { dias, categorias, matriz } = foldCategorias(props);
+  const { dias, categorias, matriz } = sacarDiasSinDatos(foldCategorias(props));
   const [hover, setHover] = useState<{ ci: number; di: number } | null>(null);
 
   const maxValor = Math.max(0, ...matriz.flat());
