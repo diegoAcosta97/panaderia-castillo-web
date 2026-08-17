@@ -34,8 +34,8 @@ export function ScannerInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valor]);
 
-  async function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== "Enter" || !valor.trim()) return;
+  async function procesarCodigo() {
+    if (!valor.trim()) return;
     const codigo = valor.trim();
     setError(null);
     const producto = await buscarPorCodigo(codigo);
@@ -47,6 +47,26 @@ export function ScannerInput({
     }
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter") return;
+    // preventDefault corta el submit implícito que dispara el propio <form> de abajo -- si no,
+    // en desktop este handler y handleSubmit correrían los dos para la misma tecla Enter.
+    e.preventDefault();
+    procesarCodigo();
+  }
+
+  // En mobile, el input no tenía ningún <form> propio -- el navegador lo trataba como parte de
+  // un único formulario implícito junto con TODOS los inputs de la pantalla (cantidad de cada
+  // renglón del carrito incluidos), así que el teclado virtual mostraba "Siguiente" en vez de
+  // "Ir"/"Buscar" y, al tocarlo, saltaba el foco al primer input de cantidad del carrito sin
+  // disparar ningún Enter real (handleKeyDown nunca corría). Envolver el input en su propio
+  // <form> lo aísla de esa navegación: el teclado pasa a mostrar "Ir"/"Buscar" y tocarlo dispara
+  // submit acá, que hace exactamente lo mismo que Enter en desktop.
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    procesarCodigo();
+  }
+
   function handleSeleccionarSugerencia(producto: Producto) {
     onSeleccionar(producto);
     setValor("");
@@ -56,14 +76,17 @@ export function ScannerInput({
 
   return (
     <div className="relative">
-      <Input
-        ref={inputRef}
-        disabled={disabled}
-        placeholder="Escanear código de barras o buscar por nombre..."
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        onKeyDown={handleKeyDown}
-      />
+      <form onSubmit={handleSubmit}>
+        <Input
+          ref={inputRef}
+          disabled={disabled}
+          placeholder="Escanear código de barras o buscar por nombre..."
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          onKeyDown={handleKeyDown}
+          enterKeyHint="search"
+        />
+      </form>
       {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
       {resultados.length > 0 && valor.trim().length >= 2 && (
         <ul className="absolute z-10 mt-1 w-full rounded-lg border bg-popover shadow-md">
