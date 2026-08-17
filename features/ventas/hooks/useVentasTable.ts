@@ -13,10 +13,13 @@ import type { MedioPago } from "@/types/database";
 
 const PAGE_SIZE = 20;
 
-export function useVentasTable() {
+// `cajaTurnoIdFijo`: vendedor en /pos/ventas -- solo puede ver la caja abierta (RF del dueño),
+// arranca con ese filtro ya puesto. VentasTable no renderiza los controles para cambiarlo en ese
+// caso, pero el estado sigue siendo editable acá adentro por si en el futuro hace falta.
+export function useVentasTable(opciones?: { cajaTurnoIdFijo?: string }) {
   const [pageIndex, setPageIndex] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [cajaTurnoId, setCajaTurnoIdState] = useState("");
+  const [cajaTurnoId, setCajaTurnoIdState] = useState(opciones?.cajaTurnoIdFijo ?? "");
   const [desde, setDesdeState] = useState("");
   const [hasta, setHastaState] = useState("");
   const [medioPago, setMedioPagoState] = useState<MedioPago | "">("");

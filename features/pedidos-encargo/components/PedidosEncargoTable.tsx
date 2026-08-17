@@ -30,7 +30,13 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   cancelado: "Cancelado",
 };
 
-export function PedidosEncargoTable({ productos }: { productos: Producto[] }) {
+export function PedidosEncargoTable({
+  productos,
+  puedeExportar = true,
+}: {
+  productos: Producto[];
+  puedeExportar?: boolean;
+}) {
   const table = usePedidosEncargoTable();
   const [error, setError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
@@ -198,10 +204,12 @@ export function PedidosEncargoTable({ productos }: { productos: Producto[] }) {
             Filtros activos
           </p>
         )}
-        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
-          <Printer className="size-4" />
-          {exportando ? "Generando..." : "Exportar listado"}
-        </Button>
+        {puedeExportar && (
+          <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+            <Printer className="size-4" />
+            {exportando ? "Generando..." : "Exportar listado"}
+          </Button>
+        )}
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

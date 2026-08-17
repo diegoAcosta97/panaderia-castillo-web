@@ -43,11 +43,16 @@ const MEDIOS_PAGO: MedioPago[] = [
 export function VentasTable({
   turnos,
   basePath = "/admin/ventas",
+  turnoBloqueadoId,
 }: {
   turnos: CajaTurno[];
   basePath?: string;
+  // Vendedor en /pos/ventas (RF del dueño): solo puede ver la caja abierta, sin poder tocar
+  // ningún filtro ni exportar -- turno de caja, fecha y tipo de cobro no se pueden reasignar
+  // (ver useVentasTable), y el botón de exportar directamente no se renderiza.
+  turnoBloqueadoId?: string;
 }) {
-  const table = useVentasTable();
+  const table = useVentasTable({ cajaTurnoIdFijo: turnoBloqueadoId });
   const [exportando, setExportando] = useState(false);
   const [errorExport, setErrorExport] = useState<string | null>(null);
   const [listado, setListado] = useState<(string | number)[][] | null>(null);
@@ -151,65 +156,71 @@ export function VentasTable({
   return (
     <>
     <div className="flex flex-col gap-4 print:hidden">
-      {/* Select nativo a propósito, mismo criterio que en el resto del proyecto. */}
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="grid gap-2">
-          <Label htmlFor="cajaTurnoId">Turno de caja</Label>
-          <select
-            id="cajaTurnoId"
-            value={table.cajaTurnoId}
-            onChange={(e) => table.setCajaTurnoId(e.target.value)}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-          >
-            <option value="">Todos</option>
-            {turnos.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.fecha} {t.etiqueta_turno ? `— ${t.etiqueta_turno}` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="desde">Desde</Label>
-          <Input
-            id="desde"
-            type="date"
-            value={table.desde}
-            onChange={(e) => table.setDesde(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="hasta">Hasta</Label>
-          <Input
-            id="hasta"
-            type="date"
-            value={table.hasta}
-            onChange={(e) => table.setHasta(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="medioPago">Tipo de cobro</Label>
-          <select
-            id="medioPago"
-            value={table.medioPago}
-            onChange={(e) => table.setMedioPago(e.target.value as MedioPago | "")}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
-          >
-            <option value="">Todos</option>
-            {MEDIOS_PAGO.map((m) => (
-              <option key={m} value={m}>
-                {ETIQUETA_MEDIO[m]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
-          <Printer className="size-4" />
-          {exportando ? "Generando..." : "Exportar listado"}
-        </Button>
-      </div>
+      {turnoBloqueadoId ? (
+        <p className="text-sm text-muted-foreground">Ventas del turno de caja abierto.</p>
+      ) : (
+        <>
+          {/* Select nativo a propósito, mismo criterio que en el resto del proyecto. */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="grid gap-2">
+              <Label htmlFor="cajaTurnoId">Turno de caja</Label>
+              <select
+                id="cajaTurnoId"
+                value={table.cajaTurnoId}
+                onChange={(e) => table.setCajaTurnoId(e.target.value)}
+                className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              >
+                <option value="">Todos</option>
+                {turnos.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.fecha} {t.etiqueta_turno ? `— ${t.etiqueta_turno}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="desde">Desde</Label>
+              <Input
+                id="desde"
+                type="date"
+                value={table.desde}
+                onChange={(e) => table.setDesde(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="hasta">Hasta</Label>
+              <Input
+                id="hasta"
+                type="date"
+                value={table.hasta}
+                onChange={(e) => table.setHasta(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="medioPago">Tipo de cobro</Label>
+              <select
+                id="medioPago"
+                value={table.medioPago}
+                onChange={(e) => table.setMedioPago(e.target.value as MedioPago | "")}
+                className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              >
+                <option value="">Todos</option>
+                {MEDIOS_PAGO.map((m) => (
+                  <option key={m} value={m}>
+                    {ETIQUETA_MEDIO[m]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
+              <Printer className="size-4" />
+              {exportando ? "Generando..." : "Exportar listado"}
+            </Button>
+          </div>
 
-      {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
+          {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
+        </>
+      )}
 
       <DataTable
         columns={columns}

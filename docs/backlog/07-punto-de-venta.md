@@ -296,6 +296,37 @@ Dos problemas reportados por el dueño:
 
 ---
 
+### E7-12 — Vendedor sin exportar, ventas acotadas al turno abierto
+- **Objetivo:** RF del dueño: "el rol vendedor no debe tener la opción exportar listado en el
+  listado de ventas... solo puede ver las ventas realizadas en la caja abierta... tampoco puede
+  exportar el listado de pedidos, solo podrá ver y filtrar."
+- **Descripción:** restricción puramente de UI (no toca RLS -- `ventas_select`/`renglones_venta_
+  select` siguen dejando ver al cajero lo suyo de cualquier turno + lo del turno abierto de
+  cualquiera, para poder reimprimir un comprobante viejo; acá se trata de qué le ofrece el
+  *listado*, no de qué puede leer). En `/pos/ventas`, si la sesión es `cajero`,
+  `VentasTable` recibe un `turnoBloqueadoId` con el turno abierto: no se renderiza ningún control
+  de filtro (turno/fecha/tipo de cobro quedan implícitos, ya acotados a ese turno) ni el botón
+  "Exportar listado", solo la tabla + el resumen de totales (que ya sirve para ver el desglose por
+  medio de pago sin un filtro aparte). Si no hay turno abierto, se muestra un aviso en vez de la
+  tabla. Un administrador que visite `/pos/ventas` conserva el listado completo (mismo criterio
+  que ya usa el resto de `/pos/**`: admin no pierde capacidades por estar del lado del cajero).
+
+  En pedidos por encargo (`PantallaPedidos`/`PedidosEncargoTable`), la restricción es más chica:
+  el vendedor sigue viendo y filtrando el listado completo (estado, texto), solo se oculta el
+  botón "Exportar listado" -- `puedeExportar` se resuelve en `/pos/pedidos` con la misma sesión,
+  default `true` en `/admin/pedidos` (siempre administrador).
+- **Depende de:** E7-8, `06-ofertas-descuentos.md`, `pedidos-encargo` (mismo archivo, sección de
+  pedidos por encargo)
+- **Archivos/módulos:** `features/ventas/hooks/useVentasTable.ts`,
+  `features/ventas/components/VentasTable.tsx`, `app/pos/ventas/page.tsx`,
+  `features/pedidos-encargo/components/{PantallaPedidos,PedidosEncargoTable}.tsx`,
+  `app/pos/(operacion)/pedidos/page.tsx`
+- **Cambios de base de datos:** —
+- **Criterios de aceptación:**
+  - [x] `npx tsc --noEmit` y `eslint` limpios sobre los archivos tocados
+
+---
+
 ## Nota de verificación (2026-08-07)
 
 Dos rondas de pruebas reales contra la base (con `tsx`, sin mocks), ambas limpiadas al terminar:
