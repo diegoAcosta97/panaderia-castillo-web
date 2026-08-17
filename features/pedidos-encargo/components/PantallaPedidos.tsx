@@ -12,8 +12,12 @@ export function PantallaPedidos({ productos }: { productos: Producto[] }) {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Pedidos por encargo</h1>
-      <NuevoPedidoForm onCreado={() => setRefreshKey((k) => k + 1)} />
+      {/* Al exportar el listado (PedidosEncargoTable dispara window.print()) solo tiene que
+          imprimirse la tabla de abajo, no el título ni el formulario de alta. */}
+      <div className="flex flex-col gap-6 print:hidden">
+        <h1 className="text-2xl font-semibold">Pedidos por encargo</h1>
+        <NuevoPedidoForm onCreado={() => setRefreshKey((k) => k + 1)} />
+      </div>
       <PedidosEncargoTable key={refreshKey} productos={productos} />
     </div>
   );

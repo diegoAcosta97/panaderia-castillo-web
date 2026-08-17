@@ -10,8 +10,12 @@ export default async function PagosEmpleadosPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Pagos a empleados</h1>
-      <NuevoPagoEmpleadoForm empleados={empleadosActivos} />
+      {/* Al exportar el listado (PagosEmpleadosTable dispara window.print()) solo tiene que
+          imprimirse la tabla de abajo, no el título ni el formulario de alta. */}
+      <div className="flex flex-col gap-6 print:hidden">
+        <h1 className="text-2xl font-semibold">Pagos a empleados</h1>
+        <NuevoPagoEmpleadoForm empleados={empleadosActivos} />
+      </div>
       <PagosEmpleadosTable empleados={empleados} />
     </div>
   );
