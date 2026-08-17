@@ -27,7 +27,8 @@ export function PantallaVenta({
   ofertas: OfertaConItems[];
   descuentos: DescuentoConCondiciones[];
 }) {
-  const { renglones, agregarProducto, actualizarCantidad, quitarRenglon, vaciar } = useCarrito();
+  const { renglones, agregarProducto, actualizarCantidad, actualizarCantidadYPrecio, quitarRenglon, vaciar } =
+    useCarrito();
   const [productoPesoPendiente, setProductoPesoPendiente] = useState<Producto | null>(null);
   const [paso, setPaso] = useState<"carrito" | "cobro">("carrito");
   const [pedidoActivo, setPedidoActivo] = useState<{
@@ -64,9 +65,9 @@ export function PantallaVenta({
     }
   }
 
-  function confirmarPeso(peso: number) {
+  function confirmarPeso(peso: number, precioUnitario?: number) {
     if (productoPesoPendiente) {
-      agregarProducto(productoPesoPendiente, peso);
+      agregarProducto(productoPesoPendiente, peso, precioUnitario);
       setProductoPesoPendiente(null);
     }
   }
@@ -136,6 +137,7 @@ export function PantallaVenta({
       <Carrito
         renglones={renglones}
         onCantidadChange={actualizarCantidad}
+        onCantidadYPrecioChange={actualizarCantidadYPrecio}
         onQuitar={quitarRenglon}
       />
 

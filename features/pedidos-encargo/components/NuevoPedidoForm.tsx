@@ -18,7 +18,8 @@ import type { Producto } from "@/repositories/productosRepository";
 const HOY = new Date().toISOString().slice(0, 10);
 
 export function NuevoPedidoForm({ onCreado }: { onCreado?: () => void }) {
-  const { renglones, agregarProducto, actualizarCantidad, quitarRenglon, vaciar } = useCarrito();
+  const { renglones, agregarProducto, actualizarCantidad, actualizarCantidadYPrecio, quitarRenglon, vaciar } =
+    useCarrito();
   const [productoPesoPendiente, setProductoPesoPendiente] = useState<Producto | null>(null);
   const [clienteNombre, setClienteNombre] = useState("");
   const [clienteTelefono, setClienteTelefono] = useState("");
@@ -27,7 +28,7 @@ export function NuevoPedidoForm({ onCreado }: { onCreado?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const total = renglones.reduce((acc, r) => acc + r.cantidad * r.producto.precio, 0);
+  const total = renglones.reduce((acc, r) => acc + r.cantidad * r.precioUnitario, 0);
 
   // Mismo criterio que PantallaVenta (E7-4): un producto "por peso" pide el peso (o el monto)
   // antes de agregarse -- antes acá se agregaba directo con cantidad=1, sin dejar elegir el peso.
@@ -39,9 +40,9 @@ export function NuevoPedidoForm({ onCreado }: { onCreado?: () => void }) {
     }
   }
 
-  function confirmarPeso(peso: number) {
+  function confirmarPeso(peso: number, precioUnitario?: number) {
     if (productoPesoPendiente) {
-      agregarProducto(productoPesoPendiente, peso);
+      agregarProducto(productoPesoPendiente, peso, precioUnitario);
       setProductoPesoPendiente(null);
     }
   }
@@ -118,6 +119,7 @@ export function NuevoPedidoForm({ onCreado }: { onCreado?: () => void }) {
         <Carrito
           renglones={renglones}
           onCantidadChange={actualizarCantidad}
+          onCantidadYPrecioChange={actualizarCantidadYPrecio}
           onQuitar={quitarRenglon}
         />
       </div>

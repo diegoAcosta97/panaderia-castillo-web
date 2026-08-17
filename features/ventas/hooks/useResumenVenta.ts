@@ -23,7 +23,10 @@ export function useResumenVenta(
       productoId: r.producto.id,
       cantidad: r.cantidad,
     }));
-    const subtotal = renglones.reduce((acc, r) => acc + r.cantidad * r.producto.precio, 0);
+    // precioUnitario, no producto.precio: puede diferir del catálogo cuando la línea se cargó/
+    // editó "por monto" (ver useCarrito.RenglonCarritoUI). Las ofertas/descuentos siguen
+    // evaluándose sobre precio de catálogo (evaluarBeneficios usa `productos`, no este subtotal).
+    const subtotal = renglones.reduce((acc, r) => acc + r.cantidad * r.precioUnitario, 0);
     const resultado = evaluarBeneficios(
       renglonesCarrito,
       productos,

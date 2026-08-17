@@ -257,6 +257,45 @@ Dos problemas reportados por el dueño:
 
 ---
 
+### E7-11 — Cargar/editar "por monto" cobra el monto exacto tipeado ✅ Hecho (2026-08-21)
+- **Objetivo:** el redondeo del peso al gramo (numeric(12,3)) hacía que cargar "$1000 de pan
+  malteado" terminara cobrando $999 (o cualquier otro valor cercano, según el precio/kg) en vez de
+  los $1000 tipeados — reportado por el dueño.
+- **Descripción:** un renglón "por peso" cargado o editado por monto (`PesoDialog`, `Carrito`,
+  ver E7-4/E7-10) ahora manda un `precio_unitario` propio para esa línea puntual, ajustado para
+  que `cantidad_redondeada * precio_unitario` dé exactamente el monto pedido, en vez de perder
+  unos pesos por el redondeo del peso. `confirmar_venta` valida ese precio contra una tolerancia
+  chica en pesos (`greatest(precio_catalogo * 0.001, 0.01)` por unidad de cantidad — aprox. el
+  valor de medio gramo, el margen máximo real que puede introducir el redondeo) antes de
+  aceptarlo, para no confiar ciegamente en un precio mandado por el cliente (mismo criterio que
+  la validación de "medios de pago == total"). El caso común (sin ningún override, la gran
+  mayoría de las ventas) manda la misma forma de siempre y usa el precio de catálogo tal cual,
+  sin cambios de comportamiento.
+
+  Editar la cantidad/peso directamente (no el monto) sigue usando el precio de catálogo sin
+  ajustar — no hay ninguna "pérdida de precisión" que compensar ahí, es una cantidad exacta, no
+  una aproximación. `useCarrito.RenglonCarritoUI` suma `precioUnitario` (== `producto.precio`
+  salvo override); `useCobro.mergeRenglones` agrupa por `(producto_id, precioUnitario)` en vez de
+  solo `producto_id`, para no mezclar una pesada ajustada con otra a precio de lista del mismo
+  producto en un mismo renglón.
+- **Depende de:** E7-3, E7-4, E7-9 (mismo `v_factor` de recargo, aplicado sobre el precio efectivo)
+- **Archivos/módulos:**
+  `supabase/migrations/20260821090025_confirmar_venta_precio_por_monto.sql`,
+  `features/ventas/hooks/{useCarrito,useCobro,useResumenVenta}.ts`,
+  `features/ventas/components/{Carrito,PesoDialog,PantallaVenta}.tsx`,
+  `features/pedidos-encargo/components/NuevoPedidoForm.tsx`, `repositories/ventasRepository.ts`
+- **Cambios de base de datos:** `create or replace function confirmar_venta` (mismo signature,
+  agrupa renglones por producto+precio y valida la tolerancia del precio ajustado)
+- **Criterios de aceptación:** (verificados contra la base real, transacción revertida)
+  - [x] $1000 de un producto a $3500/kg (peso redondeado a 0,286 kg, precio ajustado a
+        $3496,50/kg) deja `ventas.subtotal = ventas.total = 1000.00` exacto
+  - [x] Un precio fuera de tolerancia (la mitad del de catálogo) se rechaza
+  - [x] Una venta sin ningún `precio_unitario` funciona idéntico a antes de este cambio
+  - [x] Dos pesadas del mismo producto, una con override y otra sin, quedan como dos filas
+        separadas en `renglones_venta` y el stock se descuenta acumulado correctamente
+
+---
+
 ## Nota de verificación (2026-08-07)
 
 Dos rondas de pruebas reales contra la base (con `tsx`, sin mocks), ambas limpiadas al terminar:

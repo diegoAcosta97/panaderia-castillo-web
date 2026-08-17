@@ -20,6 +20,9 @@ function sinMediosPagoEmbebidos(row: Venta & { venta_medios_pago?: unknown }): V
 export interface RenglonInput {
   producto_id: string;
   cantidad: number;
+  // Solo presente cuando la línea se cargó/editó "por monto" en un producto por peso (E7-4/E7-11)
+  // -- confirmar_venta valida que difiera poco del precio de catálogo antes de usarlo.
+  precio_unitario?: number;
 }
 
 export interface OfertaAplicadaInput {

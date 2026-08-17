@@ -17,10 +17,23 @@ import { formatearMoneda } from "@/lib/format";
 
 // Redondeo acorde a la precisión real de cada tipo de venta: "unidad" no admite fracciones
 // (stock_actual entero, RF-1.2), "peso" se guarda numeric(12,3) -- ver docs/data-model.md.
-function cantidadDesdeSubtotal(subtotal: number, precio: number, tipoVenta: "unidad" | "peso") {
-  if (precio <= 0) return 0;
-  const cruda = subtotal / precio;
-  return tipoVenta === "unidad" ? Math.round(cruda) : Math.round(cruda * 1000) / 1000;
+//
+// Para "peso" el redondeo al gramo casi nunca reproduce el monto tipeado exacto (ej. $1000 a
+// $3500/kg redondea a 0,286 kg, que a precio de catálogo son $1001, no $1000). En vez de resignar
+// esa diferencia, se ajusta el precio de ESTA línea puntual (precioUnitario) para que
+// cantidad * precioUnitario dé justo el monto pedido -- confirmar_venta valida que el ajuste sea
+// mínimo (a lo sumo el margen que puede introducir redondear medio gramo) antes de aceptarlo.
+function resolverDesdeSubtotal(
+  subtotal: number,
+  precioCatalogo: number,
+  tipoVenta: "unidad" | "peso",
+): { cantidad: number; precioUnitario: number } | null {
+  if (precioCatalogo <= 0 || subtotal <= 0) return null;
+  if (tipoVenta === "unidad") {
+    return { cantidad: Math.max(1, Math.round(subtotal / precioCatalogo)), precioUnitario: precioCatalogo };
+  }
+  const cantidad = Math.max(0.001, Math.round((subtotal / precioCatalogo) * 1000) / 1000);
+  return { cantidad, precioUnitario: Math.round((subtotal / cantidad) * 100) / 100 };
 }
 
 // Confirma recién al salir del campo (blur/Enter), no en cada tecla -- cantidad y subtotal se
@@ -72,7 +85,7 @@ function RenglonRow({
   onQuitar: () => void;
 }) {
   const esPeso = renglon.producto.tipo_venta === "peso";
-  const subtotal = renglon.cantidad * renglon.producto.precio;
+  const subtotal = renglon.cantidad * renglon.precioUnitario;
 
   // Redondeo también al tipear la cantidad directamente (no solo al derivarla del subtotal) --
   // un producto "por unidad" nunca debería terminar con una cantidad fraccionaria.
@@ -111,7 +124,7 @@ function RenglonRow({
         )}
       </TableCell>
       <TableCell>
-        {formatearMoneda(renglon.producto.precio)}
+        {formatearMoneda(renglon.precioUnitario)}
         {esPeso ? "/kg" : ""}
       </TableCell>
       <TableCell>
@@ -129,10 +142,12 @@ function RenglonRow({
 export function Carrito({
   renglones,
   onCantidadChange,
+  onCantidadYPrecioChange,
   onQuitar,
 }: {
   renglones: RenglonCarritoUI[];
   onCantidadChange: (index: number, cantidad: number) => void;
+  onCantidadYPrecioChange: (index: number, cantidad: number, precioUnitario: number) => void;
   onQuitar: (index: number) => void;
 }) {
   if (renglones.length === 0) {
@@ -140,8 +155,13 @@ export function Carrito({
   }
 
   function handleSubtotalChange(index: number, renglon: RenglonCarritoUI, subtotal: number) {
-    const cantidad = cantidadDesdeSubtotal(subtotal, renglon.producto.precio, renglon.producto.tipo_venta);
-    if (cantidad > 0) onCantidadChange(index, cantidad);
+    const resultado = resolverDesdeSubtotal(subtotal, renglon.producto.precio, renglon.producto.tipo_venta);
+    if (!resultado) return;
+    if (renglon.producto.tipo_venta === "peso") {
+      onCantidadYPrecioChange(index, resultado.cantidad, resultado.precioUnitario);
+    } else {
+      onCantidadChange(index, resultado.cantidad);
+    }
   }
 
   return (

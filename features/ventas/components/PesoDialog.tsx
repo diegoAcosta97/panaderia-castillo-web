@@ -18,15 +18,19 @@ import { formatearMoneda } from "@/lib/format";
 type Modo = "peso" | "monto";
 
 // RF-1.2/E7-4: un producto "por peso" pide el peso antes de agregarse al carrito. También se
-// puede cargar por monto ("$1000 de pan") -- el peso se calcula dividiendo por producto.precio
-// (precio es por kg), pero lo que siempre se propaga hacia afuera (onConfirmar) es el peso en kg.
+// puede cargar por monto ("$1000 de pan") -- el peso se redondea al gramo (numeric(12,3), ver
+// docs/data-model.md) para poder guardarse, lo que casi nunca reproduce el monto tipeado exacto
+// a precio de catálogo (ej. $1000 a $3500/kg redondea a 0,286 kg = $1001, no $1000). En vez de
+// resignar esa diferencia, se ajusta el precio de ESTA pesada puntual (precioUnitario) para que
+// peso * precioUnitario dé justo el monto pedido -- confirmar_venta valida que el ajuste sea
+// mínimo (mismo criterio que Carrito.resolverDesdeSubtotal) antes de aceptarlo.
 export function PesoDialog({
   producto,
   onConfirmar,
   onCancelar,
 }: {
   producto: Producto;
-  onConfirmar: (peso: number) => void;
+  onConfirmar: (peso: number, precioUnitario?: number) => void;
   onCancelar: () => void;
 }) {
   const [modo, setModo] = useState<Modo>("peso");
@@ -35,12 +39,18 @@ export function PesoDialog({
 
   const pesoCalculado =
     modo === "monto"
-      ? Math.round(((Number(monto) || 0) / producto.precio) * 100) / 100
+      ? Math.max(0.001, Math.round(((Number(monto) || 0) / producto.precio) * 1000) / 1000)
       : Number(peso);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (pesoCalculado > 0) onConfirmar(pesoCalculado);
+    if (pesoCalculado <= 0) return;
+    if (modo === "monto") {
+      const precioUnitario = Math.round(((Number(monto) || 0) / pesoCalculado) * 100) / 100;
+      onConfirmar(pesoCalculado, precioUnitario);
+    } else {
+      onConfirmar(pesoCalculado);
+    }
   }
 
   return (
@@ -97,7 +107,8 @@ export function PesoDialog({
               />
               {pesoCalculado > 0 && (
                 <p className="text-sm text-muted-foreground">
-                  ≈ {pesoCalculado.toFixed(2)} kg (a {formatearMoneda(producto.precio)}/kg)
+                  ≈ {pesoCalculado.toFixed(3)} kg (a {formatearMoneda(producto.precio)}/kg) — se cobra el
+                  monto exacto de arriba
                 </p>
               )}
             </div>
