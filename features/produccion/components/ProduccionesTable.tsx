@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Eye, Printer } from "lucide-react";
 import { DataTable } from "@/components/data-table/DataTable";
+import { buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -51,9 +53,24 @@ export function ProduccionesTable({ empleados }: { empleados: Empleado[] }) {
         id: "acciones",
         header: "",
         cell: ({ row }) => (
-          <Link href={`/admin/produccion/${row.original.id}`} className="text-sm underline">
-            Ver
-          </Link>
+          <div className="flex gap-1">
+            <Link
+              href={`/admin/produccion/${row.original.id}`}
+              className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+              aria-label="Ver"
+            >
+              <Eye className="size-4" />
+            </Link>
+            <Link
+              href={`/admin/produccion/${row.original.id}/comprobante`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+              aria-label="Imprimir pedido de producción"
+            >
+              <Printer className="size-4" />
+            </Link>
+          </div>
         ),
       },
     ],

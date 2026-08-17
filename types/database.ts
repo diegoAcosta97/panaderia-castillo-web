@@ -478,6 +478,9 @@ export interface Database {
           cantidad_pedida: number;
           cantidad_producida: number | null;
           diferencia: number | null;
+          temperatura_medio_coccion: number | null;
+          temperatura_interna_alimento: number | null;
+          tiempo_coccion_minutos: number | null;
         };
         Insert: {
           id?: string;
@@ -485,6 +488,9 @@ export interface Database {
           producto_id: string;
           cantidad_pedida?: number;
           cantidad_producida?: number | null;
+          temperatura_medio_coccion?: number | null;
+          temperatura_interna_alimento?: number | null;
+          tiempo_coccion_minutos?: number | null;
         };
         Update: {
           id?: string;
@@ -492,6 +498,9 @@ export interface Database {
           producto_id?: string;
           cantidad_pedida?: number;
           cantidad_producida?: number | null;
+          temperatura_medio_coccion?: number | null;
+          temperatura_interna_alimento?: number | null;
+          tiempo_coccion_minutos?: number | null;
         };
         Relationships: [];
       };

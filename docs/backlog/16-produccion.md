@@ -1,4 +1,4 @@
-# EPIC 16 — Producción propia
+﻿# EPIC 16 — Producción propia
 
 Pedido de producción interna (sanguchería y panadería): un administrador carga qué se va a
 producir, para quién/quién lo hace y para cuándo; cuando termina, ratifica cuánto se produjo
@@ -155,11 +155,120 @@ explícito del dueño.
 
 ---
 
+### E16-7 — Planilla mensual "Registro de control de elaboración" (BPM)
+- **Objetivo:** generar la planilla mensual de control de elaboración que exige el Manual de
+  Buenas Prácticas de Manufactura, sin tener que armarla a mano.
+- **Descripción:** botón "Control de Elaboración" en `/admin/produccion` → `/admin/produccion/
+  control-elaboracion`. Se elige un mes (`<input type="month">`, no hay selector de mes en el
+  design system) y `listFilasControlElaboracion` (repositorio) trae **solo producciones
+  `completado`** de ese mes (decisión confirmada con el dueño: es un registro de lo que se
+  produjo realmente, no de lo planificado) — se agrupan por `fecha_entrega` (mismo campo que
+  determina a qué mes pertenece cada una: en una panadería coincide con el día real de
+  elaboración) y se aplanan a una fila por item con `cantidad_producida > 0` (un item confirmado
+  en 0 no tiene nada que registrar). Columnas: Fecha, Producto, Kg/Unidades producidas, Destino
+  (desplegable, único valor posible hoy: `MOSTRADOR`, ver `DESTINOS` en
+  `ControlElaboracionScreen.tsx` para agregar opciones a futuro), Responsable (empleado de la
+  producción), Controló (celda vacía a propósito — RF del dueño: se completa a mano recién con la
+  planilla ya impresa, nunca es un campo editable). Debajo de la tabla: sección "LOTES DE MATERIAS
+  PRIMAS UTILIZADAS" con la lista fija de insumos pedida por el dueño, cada uno con un input al
+  lado para anotar el lote (opcional completarlo en pantalla, si no queda en blanco para escribir
+  a mano); y una sección de Observaciones (`<textarea>` simple, no hay componente Textarea en el
+  design system). Todo lo editable (destino, lotes, observaciones) es estado local del
+  componente, nunca se persiste en la base — es un armado efímero solo para imprimir, igual que
+  `ListadoImprimible` en otras pantallas. Encabezado del PDF: logo (`/logo-castillo-gemini.png`,
+  el mismo que ya se usa en el login), título "Manual de Buenas Prácticas de Manufactura",
+  subtítulo "REGISTRO DE CONTROL DE ELABORACIÓN" y el mes en curso. Mismo patrón de impresión que
+  el resto del sistema (`window.print()` vía `lib/print.ts`, sin librería de PDF): el `<Select>`
+  de Destino se oculta en impresión (`print:hidden`) a favor de un `<span>` con el valor ya
+  resuelto (`hidden print:inline`) porque un `<select>` no siempre imprime bien en todos los
+  navegadores; los `<Input>` de texto (lotes, observaciones) sí imprimen su valor
+  correctamente sin necesidad de ese truco.
+- **Depende de:** E16-4 (usa `cantidad_producida`)
+- **Archivos/módulos:** `repositories/produccionRepository.ts`
+  (`listFilasControlElaboracion`), `features/produccion/components/ControlElaboracionScreen.tsx`,
+  `app/admin/produccion/{page.tsx,control-elaboracion/page.tsx}`
+- **Cambios de base de datos:** —
+- **Criterios de aceptación:** (verificados contra la base real, transacción revertida)
+  - [x] Una producción `completado` con entrega dentro del mes elegido aparece en la planilla
+  - [x] Una producción `pendiente` (aunque tenga entrega ese mes) no aparece
+  - [x] Una producción `completado` con entrega en un mes distinto no aparece
+
+---
+
+### E16-8 — Listado: iconos ver/imprimir + pedido de producción imprimible
+- **Objetivo:** acceso más directo desde el listado, y un comprobante imprimible para
+  entregarle al empleado que tiene que hacer la producción (RF del dueño).
+- **Descripción:** en `ProduccionesTable`, la columna de acciones pasa de un link de texto "Ver"
+  a dos botones ícono: ojo (`Eye`, va a `/admin/produccion/[id]`, igual que antes) e impresora
+  (`Printer`, va a `/admin/produccion/[id]/comprobante`, en una pestaña nueva). Esa página nueva
+  (`ComprobanteProduccion.tsx` + `BotonImprimirProduccion.tsx`) es un "pedido de producción"
+  imprimible con los datos de catálogo (no los ratificados): responsable, fecha de pedido, fecha
+  de entrega, observaciones, y la tabla de productos con la **cantidad pedida** (lo planificado,
+  para que el empleado sepa qué tiene que hacer) — mismo patrón exacto que
+  `app/pos/comprobante/[ventaId]/page.tsx` (E9-1): fuera de cualquier flujo transaccional, la RLS
+  de `producciones`/`produccion_items` (admin-only) ya resuelve el acceso, sin lógica nueva.
+- **Depende de:** E16-2
+- **Archivos/módulos:** `features/produccion/components/{ProduccionesTable,ComprobanteProduccion,BotonImprimirProduccion}.tsx`,
+  `app/admin/produccion/[id]/comprobante/page.tsx`
+- **Cambios de base de datos:** —
+- **Criterios de aceptación:**
+  - [x] `npx tsc --noEmit` y `eslint` limpios sobre los archivos nuevos/tocados
+
+---
+
+### E16-9 — Datos de cocción obligatorios al completar (BPM)
+- **Objetivo:** el registro de control de elaboración exige, por producto, la temperatura del
+  medio de cocción, la temperatura interna del alimento y el tiempo de cocción — RF del dueño,
+  agregado después de E16-7.
+- **Descripción:** tres columnas nuevas en `produccion_items` (`temperatura_medio_coccion`,
+  `temperatura_interna_alimento`, `tiempo_coccion_minutos`, todas `numeric` nullable). Sin check
+  constraint a nivel de tabla a propósito: ya había producción real cargada antes de este cambio
+  con `cantidad_producida > 0` y sin estos datos (no existían todavía) — un check ahí la habría
+  dejado en un estado inválido retroactivamente. La obligatoriedad se valida enteramente dentro de
+  `completar_produccion` (única puerta de escritura, sin policy de insert/update para
+  `authenticated`, igual que siempre): si `cantidad_producida > 0`, los tres datos son
+  obligatorios; si es `0` (faltante total, no hubo cocción), quedan `null`. `CompletarProduccionForm`
+  refleja la misma regla en la UI — los tres inputs se habilitan/exigen (`required`) solo cuando la
+  cantidad producida tipeada es mayor a 0, y el botón de confirmar queda deshabilitado si falta
+  alguno.
+
+  RF del dueño sobre dónde se **ven** estos datos — solo en dos lugares, en ningún otro:
+  1. El detalle de una producción ya resuelta, `/admin/produccion/[id]` ("cuando se vea en cada
+     día").
+  2. La planilla mensual imprimible de E16-7 (`ControlElaboracionScreen`), como tres columnas
+     nuevas entre "Kg/Unidades producidas" y "Destino".
+
+  No aparecen en `ProduccionesTable`, la tarjeta del dashboard (E16-6), ni el pedido de
+  producción imprimible de E16-8 (ese se genera *antes* de cocinar, no hay nada que mostrar
+  todavía).
+- **Depende de:** E16-4, E16-7
+- **Archivos/módulos:**
+  `supabase/migrations/20260821090060_add_datos_coccion_produccion_items.sql`,
+  `supabase/migrations/20260821090065_completar_produccion_datos_coccion.sql`,
+  `types/database.ts` (`produccion_items`), `repositories/produccionRepository.ts`
+  (`CompletarProduccionItemInput`, `completarProduccion`, `FilaControlElaboracion`,
+  `listFilasControlElaboracion`), `features/produccion/components/CompletarProduccionForm.tsx`,
+  `features/produccion/components/ControlElaboracionScreen.tsx`,
+  `app/admin/produccion/[id]/page.tsx`
+- **Cambios de base de datos:** `alter table produccion_items add column
+  temperatura_medio_coccion numeric`, `add column temperatura_interna_alimento numeric`,
+  `add column tiempo_coccion_minutos numeric`; `create or replace function completar_produccion`
+  (mismo signature, agrega la validación y el guardado de los tres datos)
+- **Criterios de aceptación:** (verificados contra la base real, transacción revertida)
+  - [x] Completar con `cantidad_producida > 0` y sin alguno de los tres datos de cocción se
+        rechaza
+  - [x] Completar con los tres datos presentes guarda los valores correctamente
+  - [x] Un item con `cantidad_producida = 0` no exige (ni guarda) ningún dato de cocción
+
+---
+
 ## Nota de verificación (2026-08-21)
 
-Todo lo de arriba (E16-1 a E16-6) se verificó contra la base real con datos sintéticos, dentro de
+Todo lo de arriba (E16-1 a E16-9) se verificó contra la base real con datos sintéticos, dentro de
 transacciones revertidas (sin dejar filas de prueba persistidas): categorías habilitadas/no
 habilitadas, productos con y sin `controla_stock`, alta de producción, rechazo por categoría no
 habilitada, completar con faltante/sobra/producto nuevo, rechazo por item faltante y por estado
-inválido, y cancelación. Falta la verificación en navegador real (crear una producción, completarla
-y cancelar una desde la UI) — pendiente para una próxima sesión con credenciales de prueba.
+inválido, cancelación, filtro por mes/estado de la planilla de control de elaboración, y la
+obligatoriedad de los datos de cocción. Falta la verificación en navegador real (crear una
+producción, completarla y cancelar una desde la UI, generar/imprimir la planilla mensual) —
+pendiente para una próxima sesión con credenciales de prueba.

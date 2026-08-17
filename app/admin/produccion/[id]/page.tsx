@@ -93,36 +93,44 @@ export default async function ProduccionDetallePage({
           productosDisponibles={productosParaProduccion}
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Producto</TableHead>
-              <TableHead>Cantidad pedida</TableHead>
-              <TableHead>Cantidad producida</TableHead>
-              <TableHead>Diferencia</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{nombreProducto(item.producto_id)}</TableCell>
-                <TableCell>{item.cantidad_pedida}</TableCell>
-                <TableCell>{item.cantidad_producida ?? "—"}</TableCell>
-                <TableCell
-                  className={
-                    !item.diferencia ? "text-muted-foreground" : "font-medium text-destructive"
-                  }
-                >
-                  {item.diferencia == null
-                    ? "—"
-                    : item.diferencia > 0
-                      ? `+${item.diferencia}`
-                      : item.diferencia}
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Producto</TableHead>
+                <TableHead>Cantidad pedida</TableHead>
+                <TableHead>Cantidad producida</TableHead>
+                <TableHead>T° del medio de cocción</TableHead>
+                <TableHead>T° interna del alimento</TableHead>
+                <TableHead>Tiempo de cocción (min)</TableHead>
+                <TableHead>Diferencia</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{nombreProducto(item.producto_id)}</TableCell>
+                  <TableCell>{item.cantidad_pedida}</TableCell>
+                  <TableCell>{item.cantidad_producida ?? "—"}</TableCell>
+                  <TableCell>{item.temperatura_medio_coccion ?? "—"}</TableCell>
+                  <TableCell>{item.temperatura_interna_alimento ?? "—"}</TableCell>
+                  <TableCell>{item.tiempo_coccion_minutos ?? "—"}</TableCell>
+                  <TableCell
+                    className={
+                      !item.diferencia ? "text-muted-foreground" : "font-medium text-destructive"
+                    }
+                  >
+                    {item.diferencia == null
+                      ? "—"
+                      : item.diferencia > 0
+                        ? `+${item.diferencia}`
+                        : item.diferencia}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

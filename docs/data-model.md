@@ -422,6 +422,9 @@ concurrentes. A diferencia de `controles_stock`, no hay policies de insert/updat
 | cantidad_pedida | numeric(12,3) | planificada al cargar; `0` si el producto se agregó recién al completar |
 | cantidad_producida | numeric(12,3), nullable | null mientras sigue `pendiente`, se completa al confirmar |
 | diferencia | numeric(12,3), generada | `cantidad_producida - cantidad_pedida`, mismo patrón que `control_stock_detalles.diferencia` |
+| temperatura_medio_coccion | numeric(6,2), nullable | obligatoria (validada en `completar_produccion`) si `cantidad_producida > 0`; BPM (EPIC 16, E16-9) |
+| temperatura_interna_alimento | numeric(6,2), nullable | ídem |
+| tiempo_coccion_minutos | numeric(6,1), nullable | ídem |
 
 Todo el flujo es exclusivamente admin (a diferencia de `ingreso_mercaderia`, acá no hay una rama
 "lo carga un cajero"): `crear_produccion` da de alta la producción + items planificados;

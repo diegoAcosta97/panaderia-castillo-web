@@ -15,6 +15,11 @@ export interface NuevaProduccionInput {
 export interface CompletarProduccionItemInput {
   productoId: string;
   cantidadProducida: number;
+  // E16-9: obligatorios cuando cantidadProducida > 0 (BPM, RF del dueño) -- completar_produccion
+  // lo valida server-side. Un item con cantidadProducida = 0 no tuvo ningún evento de cocción.
+  temperaturaMedioCoccion?: number | null;
+  temperaturaInternaAlimento?: number | null;
+  tiempoCoccionMinutos?: number | null;
 }
 
 // E16-3: toda la escritura pasa por funciones SECURITY DEFINER (crear/completar/cancelar
@@ -47,6 +52,9 @@ export async function completarProduccion(
     p_items: items.map((i) => ({
       producto_id: i.productoId,
       cantidad_producida: i.cantidadProducida,
+      temperatura_medio_coccion: i.temperaturaMedioCoccion ?? null,
+      temperatura_interna_alimento: i.temperaturaInternaAlimento ?? null,
+      tiempo_coccion_minutos: i.tiempoCoccionMinutos ?? null,
     })) as unknown as Json,
   });
   if (error) throw error;
@@ -119,6 +127,88 @@ export async function listProduccionesPendientesHasta(
   }
 
   return producciones.map((p) => ({ ...p, cantidadItems: cantidadPorProduccion.get(p.id) ?? 0 }));
+}
+
+export interface FilaControlElaboracion {
+  produccionId: string;
+  fecha: string;
+  productoNombre: string;
+  cantidad: number;
+  empleadoNombre: string;
+  temperaturaMedioCoccion: number | null;
+  temperaturaInternaAlimento: number | null;
+  tiempoCoccionMinutos: number | null;
+}
+
+// E16-7: planilla mensual "Registro de control de elaboración" (docs/backlog/16-produccion.md)
+// -- solo producciones `completado` (RF del dueño: es un registro de lo que se produjo
+// realmente, no de lo planificado), agrupadas por `fecha_entrega` dentro del mes elegido (mismo
+// campo que determina "a qué día pertenece" y lo que se muestra en la columna Fecha -- coincide
+// con el día real de elaboración en una panadería). Se aplana a una fila por item con
+// `cantidad_producida > 0`: un item confirmado en 0 (faltante total) no tiene nada que registrar.
+export async function listFilasControlElaboracion(
+  supabase: SupabaseClient<Database>,
+  { desde, hasta }: { desde: string; hasta: string },
+): Promise<FilaControlElaboracion[]> {
+  const { data: producciones, error } = await supabase
+    .from("producciones")
+    .select("*")
+    .eq("estado", "completado")
+    .gte("fecha_entrega", desde)
+    .lte("fecha_entrega", hasta)
+    .order("fecha_entrega", { ascending: true });
+  if (error) throw error;
+  if (producciones.length === 0) return [];
+
+  const { data: items, error: itemsError } = await supabase
+    .from("produccion_items")
+    .select(
+      "produccion_id, producto_id, cantidad_producida, temperatura_medio_coccion, temperatura_interna_alimento, tiempo_coccion_minutos",
+    )
+    .in(
+      "produccion_id",
+      producciones.map((p) => p.id),
+    );
+  if (itemsError) throw itemsError;
+
+  const productoIds = Array.from(new Set(items.map((i) => i.producto_id)));
+  const empleadoIds = Array.from(new Set(producciones.map((p) => p.empleado_id)));
+
+  const [{ data: productos, error: productosError }, { data: empleados, error: empleadosError }] =
+    await Promise.all([
+      supabase.from("productos").select("id, nombre").in("id", productoIds),
+      supabase.from("empleados").select("id, nombre").in("id", empleadoIds),
+    ]);
+  if (productosError) throw productosError;
+  if (empleadosError) throw empleadosError;
+
+  const nombreProducto = new Map((productos ?? []).map((p) => [p.id, p.nombre]));
+  const nombreEmpleado = new Map((empleados ?? []).map((e) => [e.id, e.nombre]));
+  const produccionPorId = new Map(producciones.map((p) => [p.id, p]));
+
+  const filas: FilaControlElaboracion[] = [];
+  for (const item of items) {
+    if (item.cantidad_producida == null || item.cantidad_producida <= 0) continue;
+    const produccion = produccionPorId.get(item.produccion_id);
+    if (!produccion) continue;
+    filas.push({
+      produccionId: produccion.id,
+      fecha: produccion.fecha_entrega,
+      productoNombre: nombreProducto.get(item.producto_id) ?? "—",
+      cantidad: Number(item.cantidad_producida),
+      empleadoNombre: nombreEmpleado.get(produccion.empleado_id) ?? "—",
+      temperaturaMedioCoccion:
+        item.temperatura_medio_coccion != null ? Number(item.temperatura_medio_coccion) : null,
+      temperaturaInternaAlimento:
+        item.temperatura_interna_alimento != null ? Number(item.temperatura_interna_alimento) : null,
+      tiempoCoccionMinutos:
+        item.tiempo_coccion_minutos != null ? Number(item.tiempo_coccion_minutos) : null,
+    });
+  }
+
+  return filas.sort(
+    (a, b) => a.fecha.localeCompare(b.fecha) || a.productoNombre.localeCompare(b.productoNombre),
+  );
 }
 
 export interface ListProduccionesPaginadoParams {
