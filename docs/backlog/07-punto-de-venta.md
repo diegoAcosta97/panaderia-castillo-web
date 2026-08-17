@@ -88,6 +88,30 @@ medios de pago, confirmar y descontar stock (RF-4). La integración específica 
   - [x] Escanear (o tipear + Enter) un código de barras agrega el producto correcto al carrito
   - [x] Un producto `tipo_venta = 'peso'` pide el peso antes de agregarse al carrito
 
+**Carrito editable + `NuevoPedidoForm` sin `PesoDialog` (2026-08-21):** `Carrito` es el mismo
+componente que usan tanto `PantallaVenta` (ventas) como `NuevoPedidoForm` (pedidos por encargo).
+Dos problemas reportados por el dueño:
+1. `NuevoPedidoForm` agregaba productos `tipo_venta = 'peso'` directo con `cantidad = 1` (1 kg
+   fijo) porque nunca pasaba por `PesoDialog` como sí hace `PantallaVenta` -- ni el peso ni el
+   monto eran editables al cargar. Ahora usa el mismo `handleSeleccionar`/`confirmarPeso` que
+   `PantallaVenta`.
+2. Una vez en el carrito, la cantidad de un producto "por peso" se mostraba como texto plano (no
+   editable) y no había forma de editar el subtotal para recalcular la cantidad (o viceversa) en
+   ningún tipo de producto. `Carrito` ahora tiene una columna "Subtotal" editable además de
+   "Cantidad" -- cualquiera de los dos recalcula el otro (`cantidadDesdeSubtotal`, redondeando a
+   entero para `unidad` o a 3 decimales para `peso`, mismo criterio que `stock_actual`). Los
+   inputs confirman recién al perder el foco (blur/Enter), no en cada tecla, porque cantidad y
+   subtotal se derivan uno del otro y confirmar por tecla haría que el campo se autoreformateara
+   mientras se está escribiendo.
+
+   De paso: `useCarrito.actualizarCantidad`/`quitarRenglon` pasaron de identificar el renglón por
+   `producto_id` a identificarlo por índice -- los renglones "por peso" no se acumulan (cada
+   pesada es su propia fila, puede haber más de una del mismo producto), así que editar/quitar
+   por id tocaba **todas** las filas de ese producto a la vez en vez de una sola (bug preexistente
+   que quedó expuesto al hacer editable la cantidad de "peso").
+- **Archivos/módulos:** `features/ventas/components/Carrito.tsx`,
+  `features/ventas/hooks/useCarrito.ts`, `features/pedidos-encargo/components/NuevoPedidoForm.tsx`
+
 ---
 
 ### E7-5 — Cálculo en vivo de ofertas, descuentos y total ✅ Hecho (2026-08-07)
@@ -197,6 +221,39 @@ medios de pago, confirmar y descontar stock (RF-4). La integración específica 
   - [x] Pagar con crédito deja `ventas.total = subtotal_original * 1.15`
   - [x] Combinar tarjeta con efectivo (u otro medio) es rechazado por `confirmar_venta`
   - [x] Pagar 100% efectivo sigue sin ningún recargo (factor 1, sin cambios de comportamiento)
+
+---
+
+### E7-10 — Total del listado de ventas al filtrar, con desglose por tipo de cobro ✅ Hecho (2026-08-21)
+- **Objetivo:** al filtrar `/admin/ventas` (turno, fecha, o el filtro nuevo por tipo de cobro),
+  ver el total de lo filtrado sin tener que sumarlo a mano.
+- **Descripción:** nuevo filtro "Tipo de cobro" (medio de pago) en `VentasTable`, del lado del
+  servidor vía un join embebido `venta_medios_pago!inner` (`listVentas`/`listVentasPaginated`,
+  `repositories/ventasRepository.ts`) — una venta "combinado" nunca duplica join porque
+  `confirmar_venta` no inserta el mismo medio dos veces en una venta, así que el filtro no
+  duplica filas. `resumenVentasFiltro` (nueva) calcula el total del filtro completo (no solo la
+  página visible) sobre `venta_medios_pago`, no sobre `ventas.total` directamente, para que una
+  venta pagada mitad efectivo/mitad Mercado Pago aporte a cada subtotal por lo que realmente se
+  cobró en cada medio — la suma de todos los subtotales por medio siempre da el mismo total
+  general porque `confirmar_venta` ya garantiza que los medios de pago suman el total de la
+  venta (verificado con datos reales). Solo cuenta ventas `completada` (mismo criterio que
+  `resumenVentasPorRango`/`sumaVentasEfectivoPorTurno`).
+
+  El pie de tabla se muestra solo si hay algún filtro activo (turno, fecha o tipo de cobro): con
+  tipo de cobro filtrado, un único "Total X"; sin filtrar por tipo de cobro, un subtotal por cada
+  medio presente + "Total general". El listado imprimible (`exportarImprimible`) agrega las
+  mismas filas de subtotal/total al final del PDF.
+- **Depende de:** E7-8, E7-9 (mismo enum `medio_pago`)
+- **Archivos/módulos:** `repositories/ventasRepository.ts` (`listVentas`,
+  `listVentasPaginated`, `resumenVentasFiltro`), `features/ventas/hooks/useVentasTable.ts`,
+  `features/ventas/components/VentasTable.tsx`
+- **Cambios de base de datos:** —
+- **Criterios de aceptación:**
+  - [x] Filtrar `venta_medios_pago!inner` por `medio_pago = 'efectivo'` devuelve solo las ventas
+        con ese medio — verificado contra la base real
+  - [x] La suma de los subtotales por medio de pago (sin filtrar tipo de cobro) coincide
+        exactamente con el total general — verificado contra la base real ($5375 = $2500
+        efectivo + $2875 tarjeta de crédito, en los datos de prueba existentes)
 
 ---
 

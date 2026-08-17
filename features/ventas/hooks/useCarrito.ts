@@ -27,16 +27,19 @@ export function useCarrito() {
     });
   }
 
-  function actualizarCantidad(productoId: string, cantidad: number) {
+  // Por índice, no por producto_id: los renglones "por peso" no se acumulan (cada pesada es su
+  // propia fila, ver agregarProducto), así que puede haber más de un renglón con el mismo
+  // producto_id -- editar/quitar por id tocaría todas esas filas a la vez en vez de una sola.
+  function actualizarCantidad(index: number, cantidad: number) {
     setRenglones((prev) =>
       cantidad <= 0
-        ? prev.filter((r) => r.producto.id !== productoId)
-        : prev.map((r) => (r.producto.id === productoId ? { ...r, cantidad } : r)),
+        ? prev.filter((_, i) => i !== index)
+        : prev.map((r, i) => (i === index ? { ...r, cantidad } : r)),
     );
   }
 
-  function quitarRenglon(productoId: string) {
-    setRenglones((prev) => prev.filter((r) => r.producto.id !== productoId));
+  function quitarRenglon(index: number) {
+    setRenglones((prev) => prev.filter((_, i) => i !== index));
   }
 
   function vaciar() {
