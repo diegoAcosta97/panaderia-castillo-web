@@ -155,7 +155,9 @@ export function ControlElaboracionScreen({ nombreComercial }: { nombreComercial:
             <p className="text-sm text-muted-foreground capitalize">{etiqueta}</p>
           </header>
 
-          <div className="overflow-x-auto">
+          {/* Pantalla: tabla interactiva (editar Destino), puede scrollear horizontal si hace
+              falta -- no importa, es solo para completar antes de imprimir. */}
+          <div className="overflow-x-auto print:hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -182,26 +184,21 @@ export function ControlElaboracionScreen({ nombreComercial }: { nombreComercial:
                     <TableCell>{f.temperaturaInternaAlimento ?? "—"}</TableCell>
                     <TableCell>{f.tiempoCoccionMinutos ?? "—"}</TableCell>
                     <TableCell>
-                      <span className="print:hidden">
-                        <Select
-                          value={destinos[index] ?? DESTINOS[0]}
-                          onValueChange={(v) =>
-                            v && setDestinos((prev) => ({ ...prev, [index]: v }))
-                          }
-                        >
-                          <SelectTrigger className="w-36">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {DESTINOS.map((d) => (
-                              <SelectItem key={d} value={d}>
-                                {d}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </span>
-                      <span className="hidden print:inline">{destinos[index] ?? DESTINOS[0]}</span>
+                      <Select
+                        value={destinos[index] ?? DESTINOS[0]}
+                        onValueChange={(v) => v && setDestinos((prev) => ({ ...prev, [index]: v }))}
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DESTINOS.map((d) => (
+                            <SelectItem key={d} value={d}>
+                              {d}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>{f.empleadoNombre}</TableCell>
                     <TableCell></TableCell>
@@ -210,6 +207,46 @@ export function ControlElaboracionScreen({ nombreComercial }: { nombreComercial:
               </TableBody>
             </Table>
           </div>
+
+          {/* Impresión: tabla de solo lectura, ancho fijo por columna (suma 100%) para que las 9
+              columnas entren siempre en el ancho de A4 sin scroll -- el <Table> de shadcn envuelve
+              en un div con overflow-x-auto fijo que recorta contenido al imprimir, por eso acá va
+              una <table> HTML simple (mismo criterio que Comprobante.tsx/ListadoImprimible.tsx). */}
+          <table className="hidden w-full table-fixed border-collapse text-[9px] print:table">
+            <thead>
+              <tr className="border-b text-left">
+                <th className="w-[8%] py-1 pr-1 font-medium">Fecha</th>
+                <th className="w-[19%] py-1 pr-1 font-medium">Producto</th>
+                <th className="w-[8%] py-1 pr-1 font-medium">Kg/Un.</th>
+                <th className="w-[10%] py-1 pr-1 font-medium">T° medio cocción</th>
+                <th className="w-[10%] py-1 pr-1 font-medium">T° interna aliment.</th>
+                <th className="w-[9%] py-1 pr-1 font-medium">Tiempo (min)</th>
+                <th className="w-[11%] py-1 pr-1 font-medium">Destino</th>
+                <th className="w-[15%] py-1 pr-1 font-medium">Responsable</th>
+                <th className="w-[10%] py-1 font-medium">Controló</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((f, index) => (
+                <tr
+                  key={`print-${f.produccionId}-${f.productoNombre}-${index}`}
+                  className="border-b border-dashed align-top"
+                >
+                  <td className="py-1 pr-1">
+                    {new Date(`${f.fecha}T00:00:00`).toLocaleDateString("es-AR")}
+                  </td>
+                  <td className="py-1 pr-1 break-words">{f.productoNombre}</td>
+                  <td className="py-1 pr-1">{f.cantidad}</td>
+                  <td className="py-1 pr-1">{f.temperaturaMedioCoccion ?? "—"}</td>
+                  <td className="py-1 pr-1">{f.temperaturaInternaAlimento ?? "—"}</td>
+                  <td className="py-1 pr-1">{f.tiempoCoccionMinutos ?? "—"}</td>
+                  <td className="py-1 pr-1">{destinos[index] ?? DESTINOS[0]}</td>
+                  <td className="py-1 pr-1 break-words">{f.empleadoNombre}</td>
+                  <td className="py-1"></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
           <section className="flex flex-col gap-2">
             <h2 className="text-sm font-semibold uppercase">

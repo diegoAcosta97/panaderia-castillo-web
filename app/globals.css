@@ -132,3 +132,12 @@
     @apply font-sans;
   }
 }
+
+/* Comprobantes/planillas imprimibles (EPIC 9/10/16) asumen A4 -- sin esto, un navegador con la
+   región configurada en otro idioma puede tirar "Letter" por default y desalinear el diseño. */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+}

@@ -262,6 +262,37 @@ explícito del dueño.
 
 ---
 
+### E16-10 — Ajustes de impresión: minutos enteros + planilla mensual sin scroll en A4
+- **Descripción:** dos correcciones reportadas después de E16-9:
+  1. El input de "Tiempo de cocción" tenía `min="0.01" step="0.1"` en
+     `CompletarProduccionForm` — esa combinación define una grilla de valores válidos
+     (0.01, 0.11, 0.21...) que **no incluye enteros**, así que el navegador rechazaba "12" como
+     "valor no válido" (validación nativa del `<input type="number">`, no de la app). Se
+     cambió a `min="1" step="1"` para que solo se puedan cargar minutos enteros.
+  2. La planilla mensual (E16-7) usaba el componente `<Table>` de shadcn para la tabla de 9
+     columnas — ese componente envuelve el `<table>` en un `<div>` con `overflow-x-auto`
+     fijo (no expone esa clase como prop), que en pantalla se ve como scroll horizontal pero al
+     imprimir **recorta** lo que queda fuera del ancho visible en vez de mostrarlo — RF del dueño:
+     "no con el scroll porque es para presentarla". Se separó en dos tablas: la interactiva
+     (con el `<Select>` de Destino editable) queda `print:hidden`, visible solo en pantalla; y una
+     tabla `<table>` HTML simple nueva, visible solo al imprimir (`hidden print:table`, mismo
+     criterio que `Comprobante.tsx`/`ListadoImprimible.tsx`: las tablas imprimibles de este
+     proyecto son HTML plano, nunca el `<Table>` interactivo), con `table-fixed` + un ancho en % 
+     por columna (suma 100%) para que las 9 columnas entren siempre en el ancho de A4 sin scroll,
+     encabezados abreviados ("Kg/Un.", "Resp.", etc. — RF del dueño: "se pueden abreviar las
+     palabras... pero deben estar todas las columnas") y texto más chico (`text-[9px]`). También
+     se agregó `@page { size: A4; margin: 10mm; }` en `app/globals.css` (dentro de
+     `@media print`) para que el tamaño de papel no dependa de la configuración regional del
+     navegador/impresora.
+- **Depende de:** E16-7, E16-9
+- **Archivos/módulos:** `features/produccion/components/{CompletarProduccionForm,ControlElaboracionScreen}.tsx`,
+  `app/globals.css`
+- **Cambios de base de datos:** —
+- **Criterios de aceptación:**
+  - [x] `npx tsc --noEmit` y `eslint` limpios sobre los archivos tocados
+
+---
+
 ## Nota de verificación (2026-08-21)
 
 Todo lo de arriba (E16-1 a E16-9) se verificó contra la base real con datos sintéticos, dentro de
