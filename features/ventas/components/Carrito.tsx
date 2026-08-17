@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import type { RenglonCarritoUI } from "@/features/ventas/hooks/useCarrito";
 import { formatearMoneda } from "@/lib/format";
 
@@ -75,11 +76,13 @@ const formatoMonto = (n: number) => n.toFixed(2);
 
 function RenglonRow({
   renglon,
+  destacado,
   onCantidadChange,
   onSubtotalChange,
   onQuitar,
 }: {
   renglon: RenglonCarritoUI;
+  destacado: boolean;
   onCantidadChange: (cantidad: number) => void;
   onSubtotalChange: (subtotal: number) => void;
   onQuitar: () => void;
@@ -97,7 +100,7 @@ function RenglonRow({
   const campoSubtotal = useCampoNumerico(subtotal, formatoMonto, onSubtotalChange);
 
   return (
-    <TableRow>
+    <TableRow className={cn("transition-colors duration-700", destacado && "bg-success/15")}>
       <TableCell>{renglon.producto.nombre}</TableCell>
       <TableCell>
         {esPeso ? (
@@ -141,11 +144,19 @@ function RenglonRow({
 
 export function Carrito({
   renglones,
+  flashProductoId,
   onCantidadChange,
   onCantidadYPrecioChange,
   onQuitar,
 }: {
   renglones: RenglonCarritoUI[];
+  // E7-4 (revisión UI): id del producto recién escaneado/pesado, para resaltar brevemente la
+  // fila que lo recibió -- es la única confirmación visual de que el escaneo "entró" (antes no
+  // había ningún indicio, el cajero tenía que confiar en que el input se vació). Se resalta por
+  // índice (último renglón cuyo producto_id matchea), no por producto_id solo, porque un
+  // producto "por peso" puede tener varios renglones sin fusionar (ver useCarrito) y el que
+  // interesa es siempre el último.
+  flashProductoId?: string | null;
   onCantidadChange: (index: number, cantidad: number) => void;
   onCantidadYPrecioChange: (index: number, cantidad: number, precioUnitario: number) => void;
   onQuitar: (index: number) => void;
@@ -164,6 +175,10 @@ export function Carrito({
     }
   }
 
+  const indiceDestacado = flashProductoId
+    ? renglones.map((r) => r.producto.id).lastIndexOf(flashProductoId)
+    : -1;
+
   return (
     <Table>
       <TableHeader>
@@ -180,6 +195,7 @@ export function Carrito({
           <RenglonRow
             key={`${r.producto.id}-${index}`}
             renglon={r}
+            destacado={index === indiceDestacado}
             onCantidadChange={(cantidad) => onCantidadChange(index, cantidad)}
             onSubtotalChange={(subtotal) => handleSubtotalChange(index, r, subtotal)}
             onQuitar={() => onQuitar(index)}
