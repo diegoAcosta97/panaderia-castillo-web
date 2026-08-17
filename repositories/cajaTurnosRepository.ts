@@ -69,7 +69,7 @@ export async function cerrarTurno(
 // la llamara.
 export async function listTurnos(
   supabase: SupabaseClient<Database>,
-  filtros?: { desde?: string; hasta?: string },
+  filtros?: { desde?: string; hasta?: string; etiquetaTurno?: string },
 ): Promise<CajaTurno[]> {
   let query = supabase
     .from("caja_turnos")
@@ -78,6 +78,7 @@ export async function listTurnos(
 
   if (filtros?.desde) query = query.gte("fecha", filtros.desde);
   if (filtros?.hasta) query = query.lte("fecha", filtros.hasta);
+  if (filtros?.etiquetaTurno) query = query.eq("etiqueta_turno", filtros.etiquetaTurno);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -89,6 +90,7 @@ export interface ListTurnosPaginadoParams {
   pageSize: number;
   desde?: string;
   hasta?: string;
+  etiquetaTurno?: string;
   sort?: { column: string; ascending: boolean };
 }
 
@@ -96,7 +98,7 @@ export interface ListTurnosPaginadoParams {
 // listTurnos, aplicados como builder calls en vez de leer searchParams).
 export async function listTurnosPaginated(
   supabase: SupabaseClient<Database>,
-  { page, pageSize, desde, hasta, sort }: ListTurnosPaginadoParams,
+  { page, pageSize, desde, hasta, etiquetaTurno, sort }: ListTurnosPaginadoParams,
 ): Promise<{ data: CajaTurno[]; count: number }> {
   const from = page * pageSize;
   const to = from + pageSize - 1;
@@ -104,6 +106,7 @@ export async function listTurnosPaginated(
   let request = supabase.from("caja_turnos").select("*", { count: "exact" });
   if (desde) request = request.gte("fecha", desde);
   if (hasta) request = request.lte("fecha", hasta);
+  if (etiquetaTurno) request = request.eq("etiqueta_turno", etiquetaTurno);
 
   request = sort
     ? request.order(sort.column, { ascending: sort.ascending })

@@ -7,12 +7,14 @@ import { listTurnosPaginated } from "@/repositories/cajaTurnosRepository";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
 
 const PAGE_SIZE = 20;
+const TODOS = "__todos__";
 
 export function useCajaTurnosTable() {
   const [pageIndex, setPageIndex] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [desde, setDesdeState] = useState("");
   const [hasta, setHastaState] = useState("");
+  const [turno, setTurnoState] = useState(TODOS);
   const [data, setData] = useState<CajaTurno[]>([]);
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +31,7 @@ export function useCajaTurnosTable() {
         pageSize: PAGE_SIZE,
         desde: desde || undefined,
         hasta: hasta || undefined,
+        etiquetaTurno: turno === TODOS ? undefined : turno,
         sort,
       });
       setData(result.data);
@@ -36,7 +39,7 @@ export function useCajaTurnosTable() {
     } finally {
       setIsLoading(false);
     }
-  }, [pageIndex, sorting, desde, hasta]);
+  }, [pageIndex, sorting, desde, hasta, turno]);
 
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
@@ -49,6 +52,11 @@ export function useCajaTurnosTable() {
 
   function setHasta(value: string) {
     setHastaState(value);
+    setPageIndex(0);
+  }
+
+  function setTurno(value: string) {
+    setTurnoState(value);
     setPageIndex(0);
   }
 
@@ -65,6 +73,9 @@ export function useCajaTurnosTable() {
     setDesde,
     hasta,
     setHasta,
+    turno,
+    setTurno,
+    todosValue: TODOS,
     refetch: fetchData,
   };
 }

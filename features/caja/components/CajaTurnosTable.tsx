@@ -8,6 +8,13 @@ import { ListadoImprimible } from "@/components/print/ListadoImprimible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCajaTurnosTable } from "@/features/caja/hooks/useCajaTurnosTable";
 import { listTurnos } from "@/repositories/cajaTurnosRepository";
 import { createClient } from "@/lib/supabase/client";
@@ -16,6 +23,7 @@ import { formatearMoneda } from "@/lib/format";
 import type { CajaTurno } from "@/repositories/cajaTurnosRepository";
 
 const ETIQUETA_ESTADO: Record<string, string> = { abierta: "Abierta", cerrada: "Cerrada" };
+const TURNOS = ["Mañana", "Tarde"];
 
 export function CajaTurnosTable() {
   const table = useCajaTurnosTable();
@@ -39,6 +47,7 @@ export function CajaTurnosTable() {
       const turnos = await listTurnos(supabase, {
         desde: table.desde || undefined,
         hasta: table.hasta || undefined,
+        etiquetaTurno: table.turno === table.todosValue ? undefined : table.turno,
       });
       setListado(
         turnos.map((t) => [
@@ -128,6 +137,24 @@ export function CajaTurnosTable() {
             value={table.hasta}
             onChange={(e) => table.setHasta(e.target.value)}
           />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="turno-filtro">Turno</Label>
+          <Select value={table.turno} onValueChange={(v) => v && table.setTurno(v)}>
+            <SelectTrigger id="turno-filtro" className="w-40">
+              <SelectValue>
+                {(value: string) => (value === table.todosValue ? "Todos" : value)}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={table.todosValue}>Todos</SelectItem>
+              {TURNOS.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Button type="button" variant="outline" onClick={exportarImprimible} disabled={exportando}>
           <Printer className="size-4" />

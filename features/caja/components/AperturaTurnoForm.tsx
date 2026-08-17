@@ -6,9 +6,18 @@ import { Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { abrirTurno } from "@/features/caja/actions";
 import { getErrorMessage } from "@/lib/errors";
 import { throwIfActionError } from "@/lib/actionResult";
+
+const TURNOS = ["Mañana", "Tarde"];
 
 export function AperturaTurnoForm() {
   const [monto, setMonto] = useState("");
@@ -19,6 +28,10 @@ export function AperturaTurnoForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!etiqueta) {
+      setError("Seleccioná el turno.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
 
@@ -48,13 +61,19 @@ export function AperturaTurnoForm() {
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="etiqueta-turno">Turno (opcional)</Label>
-        <Input
-          id="etiqueta-turno"
-          placeholder="Mañana / Tarde"
-          value={etiqueta}
-          onChange={(e) => setEtiqueta(e.target.value)}
-        />
+        <Label htmlFor="etiqueta-turno">Turno</Label>
+        <Select value={etiqueta} onValueChange={(v) => v && setEtiqueta(v)}>
+          <SelectTrigger id="etiqueta-turno" className="w-full">
+            <SelectValue placeholder="Seleccionar turno" />
+          </SelectTrigger>
+          <SelectContent>
+            {TURNOS.map((t) => (
+              <SelectItem key={t} value={t}>
+                {t}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button type="submit" disabled={isLoading}>
