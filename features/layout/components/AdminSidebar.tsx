@@ -67,6 +67,9 @@ const GRUPOS: Grupo[] = [
       { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
       { href: "/admin/pedidos", label: "Pedidos por encargo", icon: CalendarClock },
       { href: "/admin/caja", label: "Caja", icon: Wallet },
+      { href: "/admin/ofertas", label: "Ofertas", icon: Percent },
+      { href: "/admin/descuentos", label: "Descuentos", icon: Tag },
+      { href: "/admin/bloqueo-caja", label: "Bloqueo de caja", icon: Lock },
     ],
   },
   {
@@ -101,9 +104,6 @@ const GRUPOS: Grupo[] = [
     secciones: [
       { href: "/admin/proveedores", label: "Proveedores", icon: Truck },
       { href: "/admin/gastos", label: "Gastos", icon: Receipt },
-      { href: "/admin/ofertas", label: "Ofertas", icon: Percent },
-      { href: "/admin/descuentos", label: "Descuentos", icon: Tag },
-      { href: "/admin/bloqueo-caja", label: "Bloqueo de caja", icon: Lock },
       { href: "/admin/configuracion", label: "Configuración", icon: Settings },
     ],
   },
