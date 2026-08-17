@@ -8,7 +8,7 @@ export default async function ProductosPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Productos</h1>
+      <h1 className="text-2xl font-semibold print:hidden">Productos</h1>
       <ProductosTable categorias={categorias} />
     </div>
   );

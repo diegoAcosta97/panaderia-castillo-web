@@ -16,7 +16,7 @@ export default async function MovimientosStockPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Movimientos de stock</h1>
+      <h1 className="text-2xl font-semibold print:hidden">Movimientos de stock</h1>
       <MovimientosStockTable productos={productos} empleados={empleados} perfiles={perfiles} />
     </div>
   );

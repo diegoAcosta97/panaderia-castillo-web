@@ -50,7 +50,7 @@ export default async function ControlStockHistorialPage() {
 
   return (
     <div className="flex flex-col gap-8 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-semibold">Control de stock</h1>
         <Link href="/admin/control-stock/nuevo" className={buttonVariants()}>
           Nuevo control
@@ -58,11 +58,13 @@ export default async function ControlStockHistorialPage() {
       </div>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Controles</h2>
+        <h2 className="text-lg font-medium print:hidden">Controles</h2>
         <ControlesStockTable />
       </section>
 
-      <section className="flex flex-col gap-3">
+      {/* Sin exportación propia -- nunca debería aparecer al imprimir el listado de "Controles"
+          de arriba. */}
+      <section className="flex flex-col gap-3 print:hidden">
         <h2 className="text-lg font-medium">Diferencias por producto</h2>
         <p className="text-muted-foreground text-sm">
           Todas las diferencias distintas de cero registradas en cualquier control, para detectar

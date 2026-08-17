@@ -10,7 +10,7 @@ export default async function VentasHistorialPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-semibold">Ventas</h1>
         {/* /pos ya exige turno de caja abierto (E4-2) -- si el admin no tiene uno, lo manda a
             abrirlo primero, mismo camino que recorre un cajero. El admin ve su AdminSidebar de
