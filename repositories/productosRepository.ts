@@ -14,6 +14,7 @@ export interface NuevoProducto {
   costo?: number | null;
   controla_stock: boolean;
   stock_minimo?: number | null;
+  stock_inicial?: number | null;
   dias_vencimiento_default?: number | null;
 }
 
@@ -135,12 +136,30 @@ export async function buscarPorNombre(
   return data;
 }
 
+// Si se carga stock inicial (> 0) al dar de alta el producto, se registra como movimiento
+// 'alta_inicial' vía registrar_alta_inicial_stock (SECURITY DEFINER) -- ver
+// docs/backlog/03-productos.md. Es una segunda llamada, no atómica con el insert: si falla,
+// el producto ya quedó creado con stock_actual seteado pero sin el movimiento de auditoría; se
+// prioriza no perder el alta del producto por un fallo en el registro del histórico.
+async function registrarAltaInicialSiCorresponde(
+  supabase: SupabaseClient<Database>,
+  producto: Producto,
+  stockInicial: number | null | undefined,
+) {
+  if (!producto.controla_stock || !stockInicial || stockInicial <= 0) return;
+  const { error } = await supabase.rpc("registrar_alta_inicial_stock", {
+    p_producto_id: producto.id,
+    p_cantidad: stockInicial,
+  });
+  if (error) throw error;
+}
+
 export async function crearProducto(
   supabase: SupabaseClient<Database>,
   input: NuevoProducto,
 ): Promise<Producto> {
   const codigoManual = input.codigo_barras?.trim() || null;
-  const stockActualInicial = input.controla_stock ? 0 : null;
+  const stockActualInicial = input.controla_stock ? (input.stock_inicial ?? 0) : null;
 
   const base = {
     categoria_id: input.categoria_id,
@@ -161,6 +180,7 @@ export async function crearProducto(
       .select("*")
       .single();
     if (error) throw error;
+    await registrarAltaInicialSiCorresponde(supabase, data, input.stock_inicial);
     return data;
   }
 
@@ -173,7 +193,10 @@ export async function crearProducto(
       .select("*")
       .single();
 
-    if (!error) return data;
+    if (!error) {
+      await registrarAltaInicialSiCorresponde(supabase, data, input.stock_inicial);
+      return data;
+    }
     if (!isPostgresErrorCode(error, POSTGRES_UNIQUE_VIOLATION)) throw error;
   }
 

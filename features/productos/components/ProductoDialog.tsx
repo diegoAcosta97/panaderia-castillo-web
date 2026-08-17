@@ -66,6 +66,7 @@ export function ProductoDialog({
   const [stockMinimo, setStockMinimo] = useState(
     producto?.stock_minimo != null ? String(producto.stock_minimo) : "",
   );
+  const [stockInicial, setStockInicial] = useState("");
   const [diasVencimiento, setDiasVencimiento] = useState(
     producto?.dias_vencimiento_default != null
       ? String(producto.dias_vencimiento_default)
@@ -112,6 +113,7 @@ export function ProductoDialog({
             costo: costo ? Number(costo) : null,
             controla_stock: controlaStock,
             stock_minimo: controlaStock && stockMinimo ? Number(stockMinimo) : null,
+            stock_inicial: controlaStock && stockInicial ? Number(stockInicial) : null,
             dias_vencimiento_default: diasVencimiento ? Number(diasVencimiento) : null,
           }),
         );
@@ -120,6 +122,7 @@ export function ProductoDialog({
         setPrecio("");
         setCosto("");
         setStockMinimo("");
+        setStockInicial("");
         setDiasVencimiento("");
       }
       setOpen(false);
@@ -261,6 +264,21 @@ export function ProductoDialog({
             />
             <Label htmlFor="producto-controla-stock">Controla stock</Label>
           </div>
+
+          {controlaStock && !esEdicion && (
+            <div className="grid gap-2">
+              <Label htmlFor="producto-stock-inicial">Stock inicial</Label>
+              <Input
+                id="producto-stock-inicial"
+                type="number"
+                min="0"
+                step="0.001"
+                placeholder="0"
+                value={stockInicial}
+                onChange={(e) => setStockInicial(e.target.value)}
+              />
+            </div>
+          )}
 
           {controlaStock && (
             <div className="grid gap-2">

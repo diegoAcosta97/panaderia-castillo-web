@@ -6,7 +6,6 @@ export const TIPO_MOVIMIENTO_LABELS: Record<TipoMovimientoStock, string> = {
   anulacion_venta: "Anulación de venta",
   etiqueta_generada: "Etiqueta generada",
   ajuste_control_stock: "Ajuste (control de stock)",
-  ajuste_manual: "Ajuste manual",
   alta_inicial: "Alta inicial",
   merma: "Merma",
   consumo_interno: "Consumo interno",

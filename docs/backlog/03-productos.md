@@ -96,6 +96,24 @@ puede borrar un producto sin historial; un admin NO puede borrar un producto con
   (`eliminarProducto`), `features/productos/components/EliminarProductoDialog.tsx`,
   `lib/errors.ts` (`POSTGRES_FOREIGN_KEY_VIOLATION`)
 
+**Alta inicial auditada + baja de `ajuste_manual` (2026-08-21):** `ajuste_manual` y
+`alta_inicial` eran dos valores del enum reservados desde E3-3 pero sin ninguna pantalla que los
+escribiera — el stock inicial de un producto nuevo se guardaba directo en `stock_actual` sin
+dejar rastro en `movimientos_stock`. Ahora `ProductoDialog` pide "Stock inicial" al dar de alta
+(oculto en edición) y, si es mayor a cero, `crearProducto` llama a la función nueva
+`registrar_alta_inicial_stock` (`SECURITY DEFINER`, mismo criterio que `registrar_merma`) para
+dejar el movimiento `alta_inicial` registrado. `ajuste_manual` se sacó del enum (era el comodín
+que EPIC 15 identificó como "disfraz" de ingresos reales, ya cubierto por
+`ajuste_control_stock`/`ingreso_mercaderia`/`merma`/`consumo_interno`) — verificado contra la
+base real que no había ninguna fila con ese tipo antes de recrear el enum sin él (Postgres no
+soporta `alter type ... drop value`).
+- **Archivos/módulos:**
+  `supabase/migrations/20260821090000_drop_ajuste_manual_tipo_movimiento.sql`,
+  `supabase/migrations/20260821090005_create_registrar_alta_inicial_stock_function.sql`,
+  `repositories/productosRepository.ts` (`crearProducto`, `registrarAltaInicialSiCorresponde`),
+  `features/productos/components/ProductoDialog.tsx`,
+  `features/movimientos-stock/lib/tipoMovimientoLabels.ts`, `types/database.ts`
+
 ---
 
 ### E3-6 — Listado de reposición (stock bajo) ✅ Hecho (2026-08-06)
