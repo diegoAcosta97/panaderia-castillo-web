@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, TipoCondicionDescuento, TipoEfectoDescuento } from "@/types/database";
+import type { Database, MedioPago, TipoCondicionDescuento, TipoEfectoDescuento } from "@/types/database";
 
 export type Descuento = Database["public"]["Tables"]["descuentos"]["Row"];
 export type DescuentoCondicion = Database["public"]["Tables"]["descuento_condiciones"]["Row"];
@@ -11,6 +11,7 @@ export interface CondicionInput {
   producto_id?: string | null;
   categoria_id?: string | null;
   cantidad_minima?: number | null;
+  medio_pago?: MedioPago | null;
 }
 
 export interface DescuentoInput {
@@ -105,7 +106,10 @@ function datosCondicion(condicion: CondicionInput, descuentoId: string) {
     categoria_id:
       condicion.tipo_condicion === "categoria_incluida" ? (condicion.categoria_id ?? null) : null,
     cantidad_minima:
-      condicion.tipo_condicion === "monto_minimo" ? null : (condicion.cantidad_minima ?? null),
+      condicion.tipo_condicion === "monto_minimo" || condicion.tipo_condicion === "medio_pago"
+        ? null
+        : (condicion.cantidad_minima ?? null),
+    medio_pago: condicion.tipo_condicion === "medio_pago" ? (condicion.medio_pago ?? null) : null,
   };
 }
 

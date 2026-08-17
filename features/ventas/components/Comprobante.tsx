@@ -90,14 +90,16 @@ export function Comprobante({
           <span className="text-muted-foreground">Subtotal</span>
           <span>{formatearMoneda(venta.subtotal)}</span>
         </div>
-        {ofertasAplicadas.map((o) => (
-          <div key={o.id} className="flex justify-between text-muted-foreground">
-            <span>
-              Combo: {nombreOferta(o.oferta_id)} x{o.veces_aplicada}
-            </span>
-            <span>-{formatearMoneda(o.monto_beneficio)}</span>
-          </div>
-        ))}
+        {ofertasAplicadas
+          .filter((o) => Number(o.monto_beneficio) !== 0)
+          .map((o) => (
+            <div key={o.id} className="flex justify-between text-muted-foreground">
+              <span>
+                Combo: {nombreOferta(o.oferta_id)} x{o.veces_aplicada}
+              </span>
+              <span>-{formatearMoneda(o.monto_beneficio)}</span>
+            </div>
+          ))}
         {descuentosAplicados.map((d) => (
           <div key={d.id} className="flex justify-between text-muted-foreground">
             <span>Descuento: {nombreDescuento(d.descuento_id)}</span>

@@ -12,6 +12,15 @@ import { formatearMoneda } from "@/lib/format";
 import type { Producto } from "@/repositories/productosRepository";
 import type { Categoria } from "@/repositories/categoriasRepository";
 import type { DescuentoConCondiciones, DescuentoCondicion } from "@/repositories/descuentosRepository";
+import type { MedioPago } from "@/types/database";
+
+const ETIQUETA_MEDIO_PAGO: Record<MedioPago, string> = {
+  efectivo: "Efectivo",
+  mercado_pago: "Mercado Pago",
+  tarjeta_debito: "Tarjeta de débito",
+  tarjeta_credito: "Tarjeta de crédito",
+  sena_pedido: "Seña (pedido por encargo)",
+};
 
 function ActivoCell({ descuento }: { descuento: DescuentoConCondiciones }) {
   const [isPending, startTransition] = useTransition();
@@ -52,6 +61,9 @@ export function DescuentosTable({
     if (c.tipo_condicion === "producto_incluido") {
       const nombre = productos.find((p) => p.id === c.producto_id)?.nombre ?? "—";
       return `≥ ${c.cantidad_minima ?? 1} ${nombre}`;
+    }
+    if (c.tipo_condicion === "medio_pago") {
+      return `paga con ${c.medio_pago ? (ETIQUETA_MEDIO_PAGO[c.medio_pago] ?? c.medio_pago) : "—"}`;
     }
     const nombre = categorias.find((cat) => cat.id === c.categoria_id)?.nombre ?? "—";
     return `≥ ${c.cantidad_minima ?? 1} de "${nombre}"`;

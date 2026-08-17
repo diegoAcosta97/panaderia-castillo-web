@@ -13,15 +13,16 @@ relevados. Si aparece el modelo original, se compara contra esto y se ajusta.
 - `rol_usuario`: `administrador` | `cajero`
 - `tipo_venta_producto`: `unidad` | `peso`
 - `tipo_movimiento_stock`: `venta` | `anulacion_venta` | `etiqueta_generada` |
-  `ajuste_control_stock` | `ajuste_manual` | `alta_inicial` | `merma` | `consumo_interno`
-  (los dos últimos, EPIC 14)
+  `ajuste_control_stock` | `alta_inicial` | `merma` | `consumo_interno` | `ingreso_mercaderia`
+  (`merma`/`consumo_interno`, EPIC 14; `ingreso_mercaderia`, EPIC 15)
 - `estado_caja_turno`: `abierta` | `cerrada`
 - `estado_venta`: `pendiente_pago` | `completada` | `anulada`
 - `medio_pago`: `efectivo` | `mercado_pago` | `sena_pedido` | `tarjeta_debito` | `tarjeta_credito`
 - `estado_pago_medio`: `pendiente` | `acreditado` | `rechazado`
 - `tipo_beneficio_oferta`: `precio_fijo` | `descuento_porcentaje` | `descuento_monto`
 - `tipo_efecto_descuento`: `porcentaje` | `monto_fijo`
-- `tipo_condicion_descuento`: `monto_minimo` | `producto_incluido` | `categoria_incluida`
+- `tipo_condicion_descuento`: `monto_minimo` | `producto_incluido` | `categoria_incluida` |
+  `medio_pago` (E6-7)
 - `estado_control_stock`: `en_progreso` | `pendiente_aprobacion` | `aprobado` | `rechazado`
 
 ## Configuración del negocio
@@ -221,6 +222,7 @@ servicio; no siempre expresable como constraint de tabla).
 | producto_id | uuid, nullable | FK a `productos.id`, usado si `tipo_condicion = 'producto_incluido'` |
 | categoria_id | uuid, nullable | FK a `categorias.id`, usado si `tipo_condicion = 'categoria_incluida'` |
 | cantidad_minima | numeric(12,3), nullable | cantidad mínima requerida (unidades o kg) para `producto_incluido`/`categoria_incluida`; default 1 si no se especifica |
+| medio_pago | medio_pago, nullable | usado si `tipo_condicion = 'medio_pago'` (E6-7); no admite `'sena_pedido'` (check constraint) |
 
 Todas las condiciones de un mismo descuento se combinan con **AND** (RF-3.2). Si en el futuro se
 necesita OR entre condiciones, se agrega un campo de agrupación lógica.
@@ -429,7 +431,9 @@ proveedores ──< gastos
 
 - **Lector de código de barras**: USB (entrada tipo teclado). No se necesita componente de
   cámara/permisos para el escaneo en el punto de venta.
-- **Ofertas vs. descuentos**: se acumulan (no son excluyentes entre sí) — confirmado.
+- **Ofertas vs. descuentos**: excluyentes por venta (revisado 2026-08-21, reemplaza la decisión
+  original de "se acumulan"). La oferta se aplica siempre y puede haber más de una por venta; el
+  descuento solo se aplica si la venta no tiene ninguna oferta aplicada.
 - **Pesaje**: los productos "por peso" se pesan en el momento de la venta (el cajero ingresa el
   peso, manual o desde balanza conectada, al vender). No hay etiquetas pre-pesadas con precio
   fijo embebido en el código de barras — el código de barras de estos productos identifica al

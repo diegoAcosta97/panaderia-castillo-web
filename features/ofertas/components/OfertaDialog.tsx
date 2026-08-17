@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,11 @@ import {
 import { crearOferta, actualizarOferta } from "@/features/ofertas/actions";
 import { getErrorMessage } from "@/lib/errors";
 import { throwIfActionError } from "@/lib/actionResult";
+import { formatearMoneda } from "@/lib/format";
+import {
+  calcularBeneficioPorAplicacion,
+  calcularPrecioNormalCombo,
+} from "@/services/beneficiosService";
 import type { Producto } from "@/repositories/productosRepository";
 import type { OfertaConItems } from "@/repositories/ofertasRepository";
 import type { TipoBeneficioOferta } from "@/types/database";
@@ -37,6 +42,10 @@ const ITEMS_VACIOS: ItemForm[] = [
   { productoId: "", cantidad: "1" },
   { productoId: "", cantidad: "1" },
 ];
+
+function etiquetaProducto(producto: Producto): string {
+  return `${producto.nombre} - ${formatearMoneda(producto.precio)}`;
+}
 
 const ETIQUETA_BENEFICIO: Record<TipoBeneficioOferta, string> = {
   precio_fijo: "Precio fijo del combo",
@@ -75,6 +84,41 @@ export function OfertaDialog({
   );
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Guarda el texto de la advertencia en el momento en que se confirmó "igual" -- si después
+  // cambia el valor/los items y el texto de la advertencia cambia (o desaparece), deja de
+  // coincidir y hay que reconfirmar. Evita un useEffect solo para resetear un booleano.
+  const [advertenciaConfirmadaPara, setAdvertenciaConfirmadaPara] = useState<string | null>(null);
+
+  // RF pedido por el dueño: si el valor configurado no genera ningún descuento real (precio
+  // fijo >= precio de comprar por separado, o un monto/porcentaje sin efecto), se advierte antes
+  // de guardar -- mismo cálculo que evaluarOfertas (services/beneficiosService.ts) para que la
+  // advertencia sea exacta. Si se guarda igual, esa oferta nunca se aplicaría en una venta
+  // (evaluarOfertas la descarta cuando el beneficio da <= 0).
+  const itemsValidos = useMemo(
+    () =>
+      items
+        .filter((item) => item.productoId && Number(item.cantidad) > 0)
+        .map((item) => ({ producto_id: item.productoId, cantidad_requerida: Number(item.cantidad) })),
+    [items],
+  );
+  const precioNormalCombo = useMemo(
+    () => calcularPrecioNormalCombo(itemsValidos, productos),
+    [itemsValidos, productos],
+  );
+  const advertenciaBeneficio = useMemo(() => {
+    if (itemsValidos.length < 2 || !valorBeneficio) return null;
+    const beneficio = calcularBeneficioPorAplicacion(
+      tipoBeneficio,
+      Number(valorBeneficio),
+      precioNormalCombo,
+    );
+    if (beneficio > 0) return null;
+    return tipoBeneficio === "precio_fijo"
+      ? `Comprando los productos por separado sale ${formatearMoneda(precioNormalCombo)}. Con ese precio fijo el combo no da ningún descuento real.`
+      : `Con ese valor, el combo (${formatearMoneda(precioNormalCombo)} por separado) no da ningún descuento real.`;
+  }, [itemsValidos, precioNormalCombo, tipoBeneficio, valorBeneficio]);
+  const advertenciaConfirmada =
+    advertenciaBeneficio !== null && advertenciaConfirmadaPara === advertenciaBeneficio;
 
   function actualizarItem(index: number, patch: Partial<ItemForm>) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -90,6 +134,7 @@ export function OfertaDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (advertenciaBeneficio && !advertenciaConfirmada) return;
     setIsLoading(true);
     setError(null);
 
@@ -118,6 +163,7 @@ export function OfertaDialog({
         setFechaInicio("");
         setFechaFin("");
         setItems(ITEMS_VACIOS);
+        setAdvertenciaConfirmadaPara(null);
       }
       setOpen(false);
       onSaved?.();
@@ -178,15 +224,17 @@ export function OfertaDialog({
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue>
-                        {(value: string) =>
-                          value ? (productos.find((p) => p.id === value)?.nombre ?? value) : "Producto"
-                        }
+                        {(value: string) => {
+                          if (!value) return "Producto";
+                          const producto = productos.find((p) => p.id === value);
+                          return producto ? etiquetaProducto(producto) : value;
+                        }}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {productos.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.nombre}
+                          {etiquetaProducto(p)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -250,6 +298,28 @@ export function OfertaDialog({
             />
           </div>
 
+          {advertenciaBeneficio && (
+            <div className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+              <p>{advertenciaBeneficio}</p>
+              {advertenciaConfirmada ? (
+                <p className="text-muted-foreground">
+                  Se va a guardar igual. Cambiá el valor o los productos del combo para sacar esta
+                  advertencia.
+                </p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => setAdvertenciaConfirmadaPara(advertenciaBeneficio)}
+                >
+                  Guardar de todas formas
+                </Button>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-2">
             <Label htmlFor="oferta-max-aplicaciones">
               Máximo de veces por venta (vacío = sin límite)
@@ -287,7 +357,10 @@ export function OfertaDialog({
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <DialogFooter>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading || (!!advertenciaBeneficio && !advertenciaConfirmada)}
+            >
               {isLoading ? "Guardando..." : esEdicion ? "Guardar cambios" : "Crear oferta"}
             </Button>
           </DialogFooter>

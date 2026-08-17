@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { ResumenVenta } from "@/features/ventas/components/ResumenVenta";
 import { EsperandoPagoMP } from "@/features/ventas/components/EsperandoPagoMP";
 import { useCobro } from "@/features/ventas/hooks/useCobro";
+import { useResumenVenta } from "@/features/ventas/hooks/useResumenVenta";
 import { generarQrParaVenta, cancelarPagoMPPendiente } from "@/features/mercadopago/actions";
 import { marcarPedidoEntregado } from "@/repositories/pedidosEncargoRepository";
 import { createClient } from "@/lib/supabase/client";
@@ -15,10 +16,21 @@ import { getErrorMessage } from "@/lib/errors";
 import { throwIfActionError } from "@/lib/actionResult";
 import { formatearMoneda } from "@/lib/format";
 import type { RenglonCarritoUI } from "@/features/ventas/hooks/useCarrito";
-import type { useResumenVenta } from "@/features/ventas/hooks/useResumenVenta";
+import type { OfertaConItems } from "@/repositories/ofertasRepository";
+import type { DescuentoConCondiciones } from "@/repositories/descuentosRepository";
 import type { MedioPago } from "@/types/database";
 
 type FormaPago = "efectivo" | "mercado_pago" | "combinado" | "tarjeta_debito" | "tarjeta_credito";
+
+// E6-7: un descuento con condición 'medio_pago' solo puede evaluarse acá, una vez elegido el
+// medio -- "combinado" no mapea a un único MedioPago (se reparte entre efectivo y Mercado Pago),
+// así que ese tipo de descuento no aplica si se paga combinado.
+const MEDIO_PAGO_POR_FORMA: Partial<Record<FormaPago, MedioPago>> = {
+  efectivo: "efectivo",
+  mercado_pago: "mercado_pago",
+  tarjeta_debito: "tarjeta_debito",
+  tarjeta_credito: "tarjeta_credito",
+};
 
 // RF acordado con el dueño: el recargo nunca es un ítem aparte -- confirmar_venta lo aplica como
 // factor a todo lo que compone el total (renglones, ofertas, descuentos), así el comprobante
@@ -33,24 +45,30 @@ const RECARGO_TARJETA: Partial<Record<FormaPago, number>> = {
 export function PantallaCobro({
   cajaTurnoId,
   renglones,
-  resumen,
+  ofertas,
+  descuentos,
   pedidoActivo,
   onCancelar,
   onConfirmada,
 }: {
   cajaTurnoId: string;
   renglones: RenglonCarritoUI[];
-  resumen: ReturnType<typeof useResumenVenta>;
+  ofertas: OfertaConItems[];
+  descuentos: DescuentoConCondiciones[];
   pedidoActivo?: { id: string; clienteNombre: string; senaTotal: number } | null;
   onCancelar: () => void;
   onConfirmada: (ventaId: string, numeroComprobante: number) => void;
 }) {
+  const [formaPago, setFormaPago] = useState<FormaPago>("efectivo");
+  // Se recalcula acá (no en PantallaVenta) porque un descuento con condición 'medio_pago' (E6-7)
+  // solo se puede evaluar una vez elegido el medio de pago.
+  const resumen = useResumenVenta(renglones, ofertas, descuentos, MEDIO_PAGO_POR_FORMA[formaPago]);
+
   // Si viene de un pedido por encargo con seña, esa plata ya entró en un turno anterior -- lo
   // que efectivo/Mercado Pago tienen que cubrir ahora es el saldo, no el total del pedido.
   const senaTotal = pedidoActivo?.senaTotal ?? 0;
   const totalACobrar = Math.max(0, resumen.total - senaTotal);
 
-  const [formaPago, setFormaPago] = useState<FormaPago>("efectivo");
   const [montoEfectivo, setMontoEfectivo] = useState(totalACobrar.toFixed(2));
   const [montoEntregado, setMontoEntregado] = useState("");
   const [esperandoPago, setEsperandoPago] = useState<{ ventaId: string } | null>(null);

@@ -77,8 +77,8 @@ de evaluación (E6-5) es la pieza que consume el punto de venta en EPIC 7.
 - **Descripción:** `services/beneficiosService.ts` — `evaluarOfertas`, `evaluarDescuentos` y
   `evaluarBeneficios` (combina ambas). Sin llamadas a Supabase: recibe productos/ofertas/
   descuentos ya cargados y un `fecha` opcional (default `new Date()`, inyectable para tests).
-  Ofertas y descuentos se calculan sobre el mismo subtotal original y se suman (RF-3.6, no hay
-  compounding de uno sobre el otro) — decisión de diseño anotada en el propio archivo.
+  Ofertas y descuentos se calculan sobre el mismo subtotal original, sin compounding de uno
+  sobre el otro (RF-3.6 original: se sumaban — **reemplazado en E6-6**, ahora son excluyentes).
 - **Depende de:** E6-3, E6-4, `03-productos.md#E3-7`
 - **Archivos/módulos:** `services/beneficiosService.ts`
 - **Cambios de base de datos:** —
@@ -91,6 +91,94 @@ de evaluación (E6-5) es la pieza que consume el punto de venta en EPIC 7.
         categoría, y ambas)
   - [x] Un descuento con condición "al menos 3 unidades de producto Y" no se activa con solo 2
         unidades en el carrito (y sí se activa con 3)
+
+---
+
+### E6-6 — Exclusividad oferta/descuento + advertencia de combo sin beneficio real ✅ Hecho (2026-08-21)
+- **Descripción:** RF-3.6 se reemplaza (ver `docs/requisitos-funcionales.md`,
+  `docs/data-model.md`): ofertas y descuentos dejan de acumularse. La oferta se aplica siempre y
+  puede haber más de una por venta; el descuento solo se aplica si la venta no tiene ninguna
+  oferta aplicada — `evaluarBeneficios` (`services/beneficiosService.ts`) ya no evalúa descuentos
+  cuando hay alguna oferta aplicada, y `confirmar_venta` rechaza server-side cualquier llamada
+  que traiga ofertas y descuentos a la vez (no confiar solo en el cálculo del cliente, mismo
+  criterio que la validación de "medios de pago == total" que ya tenía la función). `ResumenVenta`
+  avisa cuando un descuento que hubiera aplicado quedó suprimido por una oferta, para que no
+  parezca un bug.
+
+  Segunda parte: si el valor configurado en `OfertaDialog` no genera ningún descuento real (precio
+  fijo del combo >= precio de comprarlo por separado, o un monto/porcentaje sin efecto), se
+  advierte en vivo antes de guardar — mismo cálculo que `evaluarOfertas`
+  (`calcularPrecioNormalCombo`/`calcularBeneficioPorAplicacion`, extraídos y exportados de
+  `beneficiosService.ts` para que la advertencia sea exacta). El admin puede guardar igual
+  ("Guardar de todas formas"), pero `evaluarOfertas` descarta esas ofertas al evaluar un carrito
+  (beneficio <= 0 → no se aplica), así que nunca terminan generando una línea de "-$0,00" en una
+  venta. `VentaDetalle`/`Comprobante` además filtran por las dudas cualquier
+  `venta_ofertas_aplicadas.monto_beneficio = 0` histórico.
+- **Depende de:** E6-3, E6-5, `07-punto-de-venta.md#E7-3`
+- **Archivos/módulos:**
+  `supabase/migrations/20260821090010_confirmar_venta_ofertas_excluyen_descuentos.sql`,
+  `services/beneficiosService.ts`, `features/ofertas/components/OfertaDialog.tsx`,
+  `features/ventas/components/{ResumenVenta,VentaDetalle,Comprobante}.tsx`
+- **Cambios de base de datos:** `create or replace function confirmar_venta` (mismo signature,
+  agrega el guard de exclusividad)
+- **Criterios de aceptación:**
+  - [x] `confirmar_venta` rechaza una llamada con `p_ofertas` y `p_descuentos` no vacíos a la vez
+        — verificado contra la base real (transacción revertida, sin datos de prueba persistidos)
+  - [x] Una llamada solo con ofertas pasa ese guard sin problema (falla más adelante por motivos
+        no relacionados, ej. producto inexistente) — verificado igual
+  - [x] Un combo con precio fijo >= precio de comprar los productos por separado no queda en
+        `evaluarOfertas` (beneficio calculado <= 0 → se descarta)
+
+---
+
+### E6-7 — Descuento condicionado por medio de pago + referencia de precio al armar un combo ✅ Hecho (2026-08-21)
+- **Descripción:** dos pedidos del dueño sobre las pantallas de admin:
+  1. El selector de producto de `OfertaDialog` (al armar los ítems de un combo) ahora muestra
+     "Nombre - $Precio" en vez de solo el nombre, para tener el precio de referencia a mano al
+     cargar la oferta.
+  2. Nueva condición de descuento: `tipo_condicion_descuento` suma el valor `medio_pago` (nuevo
+     valor de enum, migración propia por el mismo motivo que
+     `20260811090000_add_merma_consumo_interno.sql`: un valor de enum recién agregado no se
+     puede usar en la misma transacción que lo crea). `descuento_condiciones` suma una columna
+     `medio_pago` (excluye `'sena_pedido'` por check constraint — no es un medio que el cajero
+     elija en Cobro) y el check constraint de "campo correspondiente según tipo_condicion" (E6-2)
+     se actualiza para cubrir el caso nuevo. Con esto se arma, por ejemplo, "5% de descuento
+     pagando en efectivo".
+
+     Aplicación: **mismo mecanismo que cualquier otro descuento** (línea "Descuento: X -$Y"
+     restada del subtotal, vía `confirmar_venta` ya existente) — la única diferencia real es el
+     *momento* en que se puede evaluar. Como el medio de pago recién se elige en
+     `PantallaCobro` (no en el carrito), `evaluarDescuentos`/`evaluarBeneficios`
+     (`services/beneficiosService.ts`) ahora reciben un `medioPagoSeleccionado` opcional; sin él
+     (pantalla de carrito) la condición `medio_pago` nunca se cumple, igual que hoy no se ve el
+     recargo de tarjeta hasta llegar a Cobrar. `PantallaCobro` dejó de recibir un `resumen` ya
+     calculado por `PantallaVenta` y ahora calcula el suyo propio con `useResumenVenta(...,
+     medioPago)`, recalculado cada vez que cambia el medio elegido (`"combinado"` no mapea a un
+     único medio, así que ese caso no dispara la condición). `ResumenVenta` ya avisaba
+     (`descuentosSuprimidosPorOferta`, E6-6) si el descuento queda tapado por una oferta — sigue
+     aplicando igual acá.
+- **Depende de:** E6-4, E6-5, E6-6, `07-punto-de-venta.md#E7-9` (recargo tarjeta, mismo patrón de
+  "depende del medio de pago elegido en Cobro")
+- **Archivos/módulos:**
+  `supabase/migrations/20260821090015_add_medio_pago_condicion_descuento.sql`,
+  `supabase/migrations/20260821090020_add_medio_pago_column_descuento_condiciones.sql`,
+  `services/beneficiosService.ts`, `features/ventas/hooks/useResumenVenta.ts`,
+  `features/ventas/components/{PantallaVenta,PantallaCobro}.tsx`,
+  `features/descuentos/components/{DescuentoDialog,DescuentosTable}.tsx`,
+  `features/ofertas/components/OfertaDialog.tsx`, `repositories/descuentosRepository.ts`,
+  `types/database.ts`
+- **Cambios de base de datos:** `alter type tipo_condicion_descuento add value 'medio_pago'`,
+  `alter table descuento_condiciones add column medio_pago` + constraint nuevo
+- **Criterios de aceptación:**
+  - [x] Insertar una condición `medio_pago = 'efectivo'` funciona; `medio_pago = 'sena_pedido'`
+        se rechaza (check constraint) — verificado contra la base real (transacción revertida)
+  - [x] Una condición `medio_pago` combinada con `monto_minimo` (dos campos a la vez) se rechaza
+        (check constraint de "campo correspondiente") — verificado igual
+  - [x] `evaluarBeneficios` sin `medioPagoSeleccionado` no aplica un descuento con condición
+        `medio_pago`; con `"efectivo"` sí lo aplica (5% de $200 = $10); con `"mercado_pago"` no
+        (la condición pide efectivo) — verificado con datos sintéticos
+  - [x] Con una oferta aplicada + medio de pago que matchea la condición, el descuento queda
+        suprimido igual (`descuentosSuprimidosPorOferta = true`) — verificado igual
 
 ---
 

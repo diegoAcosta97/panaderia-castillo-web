@@ -12,7 +12,6 @@ export type TipoMovimientoStock =
   | "anulacion_venta"
   | "etiqueta_generada"
   | "ajuste_control_stock"
-  | "ajuste_manual"
   | "alta_inicial"
   | "merma"
   | "consumo_interno"
@@ -20,7 +19,11 @@ export type TipoMovimientoStock =
 export type EstadoCajaTurno = "abierta" | "cerrada";
 export type TipoBeneficioOferta = "precio_fijo" | "descuento_porcentaje" | "descuento_monto";
 export type TipoEfectoDescuento = "porcentaje" | "monto_fijo";
-export type TipoCondicionDescuento = "monto_minimo" | "producto_incluido" | "categoria_incluida";
+export type TipoCondicionDescuento =
+  | "monto_minimo"
+  | "producto_incluido"
+  | "categoria_incluida"
+  | "medio_pago";
 export type EstadoVenta = "pendiente_pago" | "completada" | "anulada";
 export type MedioPago =
   | "efectivo"
@@ -777,6 +780,7 @@ export interface Database {
           producto_id: string | null;
           categoria_id: string | null;
           cantidad_minima: number | null;
+          medio_pago: MedioPago | null;
         };
         Insert: {
           id?: string;
@@ -786,6 +790,7 @@ export interface Database {
           producto_id?: string | null;
           categoria_id?: string | null;
           cantidad_minima?: number | null;
+          medio_pago?: MedioPago | null;
         };
         Update: {
           id?: string;
@@ -795,6 +800,7 @@ export interface Database {
           producto_id?: string | null;
           categoria_id?: string | null;
           cantidad_minima?: number | null;
+          medio_pago?: MedioPago | null;
         };
         Relationships: [];
       };
@@ -1115,6 +1121,13 @@ export interface Database {
           p_aprobador_id: string;
         };
         Returns: undefined;
+      };
+      registrar_alta_inicial_stock: {
+        Args: {
+          p_producto_id: string;
+          p_cantidad: number;
+        };
+        Returns: Json;
       };
     };
     Enums: {

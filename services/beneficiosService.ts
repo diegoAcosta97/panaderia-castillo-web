@@ -5,6 +5,7 @@
 import type { OfertaConItems } from "@/repositories/ofertasRepository";
 import type { DescuentoConCondiciones, DescuentoCondicion } from "@/repositories/descuentosRepository";
 import type { Producto } from "@/repositories/productosRepository";
+import type { MedioPago, TipoBeneficioOferta } from "@/types/database";
 
 export interface RenglonCarrito {
   productoId: string;
@@ -27,6 +28,10 @@ export interface ResultadoBeneficios {
   descuentosAplicados: DescuentoAplicado[];
   totalOfertas: number;
   totalDescuentos: number;
+  // true si había algún descuento que hubiera aplicado, pero no se aplicó porque la venta ya
+  // tiene ofertas -- para poder avisarlo en la UI en vez de que el descuento desaparezca sin
+  // explicación (ver ResumenVenta).
+  descuentosSuprimidosPorOferta: boolean;
 }
 
 interface Vigencia {
@@ -51,6 +56,33 @@ function cantidadEnCarrito(renglones: RenglonCarrito[], productoId: string): num
 
 function precioProducto(productos: Producto[], productoId: string): number {
   return productos.find((p) => p.id === productoId)?.precio ?? 0;
+}
+
+// Precio de comprar los items del combo por separado (sin el beneficio) -- referencia tanto
+// para el cálculo real (evaluarOfertas) como para la advertencia al configurar la oferta
+// (OfertaDialog), así ambos usan exactamente la misma cuenta.
+export function calcularPrecioNormalCombo(
+  items: { producto_id: string; cantidad_requerida: number }[],
+  productos: Producto[],
+): number {
+  return items.reduce(
+    (acc, item) => acc + item.cantidad_requerida * precioProducto(productos, item.producto_id),
+    0,
+  );
+}
+
+export function calcularBeneficioPorAplicacion(
+  tipoBeneficio: TipoBeneficioOferta,
+  valorBeneficio: number,
+  precioNormalCombo: number,
+): number {
+  if (tipoBeneficio === "precio_fijo") {
+    return Math.max(0, precioNormalCombo - valorBeneficio);
+  }
+  if (tipoBeneficio === "descuento_porcentaje") {
+    return precioNormalCombo * (valorBeneficio / 100);
+  }
+  return valorBeneficio;
 }
 
 function categoriaProducto(productos: Producto[], productoId: string): string | undefined {
@@ -81,19 +113,17 @@ export function evaluarOfertas(
       : vecesPosibles;
     if (vecesAplicada <= 0) continue;
 
-    const precioNormalCombo = oferta.items.reduce(
-      (acc, item) => acc + item.cantidad_requerida * precioProducto(productos, item.producto_id),
-      0,
+    const precioNormalCombo = calcularPrecioNormalCombo(oferta.items, productos);
+    const beneficioPorAplicacion = calcularBeneficioPorAplicacion(
+      oferta.tipo_beneficio,
+      Number(oferta.valor_beneficio),
+      precioNormalCombo,
     );
 
-    let beneficioPorAplicacion: number;
-    if (oferta.tipo_beneficio === "precio_fijo") {
-      beneficioPorAplicacion = Math.max(0, precioNormalCombo - Number(oferta.valor_beneficio));
-    } else if (oferta.tipo_beneficio === "descuento_porcentaje") {
-      beneficioPorAplicacion = precioNormalCombo * (Number(oferta.valor_beneficio) / 100);
-    } else {
-      beneficioPorAplicacion = Number(oferta.valor_beneficio);
-    }
+    // Un combo mal configurado (precio fijo >= precio de comprar por separado, o monto de
+    // descuento sin efecto real) no suma nada y no debería aparecer en la venta -- ver
+    // advertencia en OfertaDialog para evitar llegar a este caso.
+    if (beneficioPorAplicacion <= 0) continue;
 
     aplicadas.push({
       oferta,
@@ -110,6 +140,7 @@ function condicionCumplida(
   renglones: RenglonCarrito[],
   productos: Producto[],
   subtotal: number,
+  medioPagoSeleccionado: MedioPago | undefined,
 ): boolean {
   switch (condicion.tipo_condicion) {
     case "monto_minimo":
@@ -125,6 +156,11 @@ function condicionCumplida(
         .reduce((acc, r) => acc + r.cantidad, 0);
       return cantidad >= Number(condicion.cantidad_minima ?? 1);
     }
+    case "medio_pago":
+      // Solo se puede evaluar una vez elegido el medio de pago (PantallaCobro) -- en el carrito
+      // (medioPagoSeleccionado undefined) esta condición nunca se cumple, mismo momento en el
+      // que hoy se decide el recargo por tarjeta.
+      return medioPagoSeleccionado != null && condicion.medio_pago === medioPagoSeleccionado;
   }
 }
 
@@ -133,6 +169,7 @@ export function evaluarDescuentos(
   productos: Producto[],
   descuentos: DescuentoConCondiciones[],
   fecha: Date = new Date(),
+  medioPagoSeleccionado?: MedioPago,
 ): DescuentoAplicado[] {
   const subtotal = renglones.reduce(
     (acc, r) => acc + r.cantidad * precioProducto(productos, r.productoId),
@@ -145,7 +182,7 @@ export function evaluarDescuentos(
     if (descuento.condiciones.length === 0) continue;
 
     const cumpleTodas = descuento.condiciones.every((c) =>
-      condicionCumplida(c, renglones, productos, subtotal),
+      condicionCumplida(c, renglones, productos, subtotal, medioPagoSeleccionado),
     );
     if (!cumpleTodas) continue;
 
@@ -160,22 +197,34 @@ export function evaluarDescuentos(
   return aplicados;
 }
 
-// RF-3.6: ofertas y descuentos se acumulan (no son excluyentes entre sí), ambos calculados
-// sobre el mismo subtotal original — ver docs/data-model.md, decisiones confirmadas.
+// RF-3.6 (revisado): la oferta se aplica siempre y puede haber más de una por venta; el
+// descuento solo se aplica si la venta no tiene ninguna oferta aplicada -- ya no se acumulan
+// entre sí. Reemplaza la decisión anterior ("se acumulan, no son excluyentes") registrada en
+// docs/data-model.md.
 export function evaluarBeneficios(
   renglones: RenglonCarrito[],
   productos: Producto[],
   ofertas: OfertaConItems[],
   descuentos: DescuentoConCondiciones[],
   fecha: Date = new Date(),
+  medioPagoSeleccionado?: MedioPago,
 ): ResultadoBeneficios {
   const ofertasAplicadas = evaluarOfertas(renglones, productos, ofertas, fecha);
-  const descuentosAplicados = evaluarDescuentos(renglones, productos, descuentos, fecha);
+  const descuentosElegibles = evaluarDescuentos(
+    renglones,
+    productos,
+    descuentos,
+    fecha,
+    medioPagoSeleccionado,
+  );
+  const hayOfertas = ofertasAplicadas.length > 0;
+  const descuentosAplicados = hayOfertas ? [] : descuentosElegibles;
 
   return {
     ofertasAplicadas,
     descuentosAplicados,
     totalOfertas: ofertasAplicadas.reduce((acc, o) => acc + o.montoBeneficio, 0),
     totalDescuentos: descuentosAplicados.reduce((acc, d) => acc + d.montoAplicado, 0),
+    descuentosSuprimidosPorOferta: hayOfertas && descuentosElegibles.length > 0,
   };
 }

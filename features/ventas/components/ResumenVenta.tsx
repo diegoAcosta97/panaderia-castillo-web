@@ -28,6 +28,11 @@ export function ResumenVenta({
           <span>-{formatearMoneda(d.montoAplicado)}</span>
         </div>
       ))}
+      {resumen.descuentosSuprimidosPorOferta && (
+        <p className="text-xs text-muted-foreground">
+          Esta venta tiene una oferta aplicada, por eso no se suma ningún descuento.
+        </p>
+      )}
       <div className="mt-1 flex justify-between border-t pt-1 text-base font-semibold">
         <span>Total</span>
         <span>{formatearMoneda(resumen.total)}</span>

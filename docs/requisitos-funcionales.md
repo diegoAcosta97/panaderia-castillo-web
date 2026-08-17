@@ -50,15 +50,18 @@ cliente / programa de fidelización.
 - RF-3.1 Un descuento es una regla que reduce el **total de la venta** (no un renglón puntual),
   en % o en monto fijo.
 - RF-3.2 Un descuento se activa cuando la venta cumple **una o más condiciones** configuradas de
-  antemano, por ejemplo: monto total mínimo, o que la venta incluya al menos una cantidad mínima
-  (configurable, por defecto 1) de un producto o categoría determinada. El conjunto de
-  condiciones de un mismo descuento se evalúa en conjunto (todas deben cumplirse).
+  antemano, por ejemplo: monto total mínimo, que la venta incluya al menos una cantidad mínima
+  (configurable, por defecto 1) de un producto o categoría determinada, o el medio de pago
+  elegido (ej. "5% pagando en efectivo", revisado EPIC 6/E6-7). El conjunto de condiciones de un
+  mismo descuento se evalúa en conjunto (todas deben cumplirse). La condición de medio de pago
+  solo puede evaluarse en la pantalla de Cobro, una vez elegido — no en el carrito.
 - RF-3.3 El descuento se aplica **automáticamente** al cumplirse la condición, sin intervención
   del cajero.
 - RF-3.4 Un descuento tiene vigencia (fecha desde/hasta) y puede activarse/desactivarse.
 - RF-3.5 Alta, edición y baja de descuentos, solo Administrador.
-- RF-3.6 Si en una misma venta corresponden varias ofertas y/o descuentos, todos los que apliquen
-  se acumulan (a menos que en una iteración futura se pida exclusividad entre reglas).
+- RF-3.6 (revisado, EPIC 6) Ofertas y descuentos son excluyentes por venta: si corresponden una o
+  más ofertas, todas se aplican (pueden ser varias); un descuento solo se aplica si la venta no
+  tiene ninguna oferta aplicada.
 
 ## RF-4 — Venta (punto de venta)
 

@@ -83,7 +83,8 @@ export function PantallaVenta({
       <PantallaCobro
         cajaTurnoId={cajaTurnoId}
         renglones={renglones}
-        resumen={resumen}
+        ofertas={ofertas}
+        descuentos={descuentos}
         pedidoActivo={pedidoActivo}
         onCancelar={() => setPaso("carrito")}
         onConfirmada={handleConfirmada}

@@ -27,7 +27,7 @@ import { throwIfActionError } from "@/lib/actionResult";
 import type { Producto } from "@/repositories/productosRepository";
 import type { Categoria } from "@/repositories/categoriasRepository";
 import type { DescuentoConCondiciones, CondicionInput } from "@/repositories/descuentosRepository";
-import type { TipoCondicionDescuento, TipoEfectoDescuento } from "@/types/database";
+import type { MedioPago, TipoCondicionDescuento, TipoEfectoDescuento } from "@/types/database";
 
 interface CondicionForm {
   tipo: TipoCondicionDescuento;
@@ -35,16 +35,42 @@ interface CondicionForm {
   productoId: string;
   categoriaId: string;
   cantidadMinima: string;
+  medioPago: MedioPago | "";
 }
 
 function condicionVacia(): CondicionForm {
-  return { tipo: "monto_minimo", montoMinimo: "", productoId: "", categoriaId: "", cantidadMinima: "1" };
+  return {
+    tipo: "monto_minimo",
+    montoMinimo: "",
+    productoId: "",
+    categoriaId: "",
+    cantidadMinima: "1",
+    medioPago: "",
+  };
 }
 
 const ETIQUETA_CONDICION: Record<TipoCondicionDescuento, string> = {
   monto_minimo: "Monto mínimo de la venta",
   producto_incluido: "Incluye producto",
   categoria_incluida: "Incluye categoría",
+  medio_pago: "Medio de pago",
+};
+
+// Sin 'sena_pedido': no es un medio que el cajero elija en Cobro, es el saldo ya pagado de un
+// pedido por encargo (docs/backlog/06-ofertas-descuentos.md#E6-7).
+const MEDIOS_PAGO_CONDICION: MedioPago[] = [
+  "efectivo",
+  "mercado_pago",
+  "tarjeta_debito",
+  "tarjeta_credito",
+];
+
+const ETIQUETA_MEDIO_PAGO: Record<MedioPago, string> = {
+  efectivo: "Efectivo",
+  mercado_pago: "Mercado Pago",
+  tarjeta_debito: "Tarjeta de débito",
+  tarjeta_credito: "Tarjeta de crédito",
+  sena_pedido: "Seña (pedido por encargo)",
 };
 
 const ETIQUETA_EFECTO: Record<TipoEfectoDescuento, string> = {
@@ -80,6 +106,7 @@ export function DescuentoDialog({
           productoId: c.producto_id ?? "",
           categoriaId: c.categoria_id ?? "",
           cantidadMinima: c.cantidad_minima != null ? String(c.cantidad_minima) : "1",
+          medioPago: c.medio_pago ?? "",
         }))
       : [condicionVacia()],
   );
@@ -116,7 +143,9 @@ export function DescuentoDialog({
           monto_minimo: c.tipo === "monto_minimo" ? Number(c.montoMinimo) : null,
           producto_id: c.tipo === "producto_incluido" ? c.productoId : null,
           categoria_id: c.tipo === "categoria_incluida" ? c.categoriaId : null,
-          cantidad_minima: c.tipo === "monto_minimo" ? null : Number(c.cantidadMinima || 1),
+          cantidad_minima:
+            c.tipo === "monto_minimo" || c.tipo === "medio_pago" ? null : Number(c.cantidadMinima || 1),
+          medio_pago: c.tipo === "medio_pago" ? c.medioPago || null : null,
         }),
       ),
     };
@@ -288,6 +317,28 @@ export function DescuentoDialog({
                         onChange={(e) => actualizarCondicion(index, { cantidadMinima: e.target.value })}
                       />
                     </div>
+                  )}
+
+                  {condicion.tipo === "medio_pago" && (
+                    <Select
+                      value={condicion.medioPago}
+                      onValueChange={(v) => v && actualizarCondicion(index, { medioPago: v as MedioPago })}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue>
+                          {(value: MedioPago | "") =>
+                            value ? (ETIQUETA_MEDIO_PAGO[value] ?? value) : "Medio de pago"
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MEDIOS_PAGO_CONDICION.map((medio) => (
+                          <SelectItem key={medio} value={medio}>
+                            {ETIQUETA_MEDIO_PAGO[medio]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 </div>
               ))}
