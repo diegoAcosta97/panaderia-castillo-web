@@ -133,7 +133,7 @@ export function CompletarProduccionForm({
     return (
       !numeroValido(f.temperaturaMedioCoccion, -Infinity) ||
       !numeroValido(f.temperaturaInternaAlimento, -Infinity) ||
-      !numeroValido(f.tiempoCoccionMinutos, 0.01)
+      !numeroValido(f.tiempoCoccionMinutos, 1)
     );
   });
 
@@ -206,8 +206,8 @@ export function CompletarProduccionForm({
                   <TableCell>
                     <Input
                       type="number"
-                      min="0.01"
-                      step="0.1"
+                      min="1"
+                      step="1"
                       required={requiereCoccion}
                       disabled={!requiereCoccion}
                       placeholder={requiereCoccion ? "min" : "—"}
