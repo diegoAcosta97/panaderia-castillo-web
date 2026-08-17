@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TrendingUp, TrendingDown, Wallet, PackageX, Trophy, ClipboardCheck, CalendarClock } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, PackageX, Trophy, ClipboardCheck, CalendarClock, Factory } from "lucide-react";
 import { getServerSession } from "@/features/auth/services/sessionService";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { sumaSenasPorTurno, listPedidosEncargoPaginated } from "@/repositories/p
 import { listProductosBajoStock } from "@/repositories/productosRepository";
 import { listControlesStock } from "@/repositories/controlStockRepository";
 import { listIngresosMercaderia } from "@/repositories/ingresoMercaderiaRepository";
+import { listProduccionesPendientesHasta } from "@/repositories/produccionRepository";
+import { listEmpleados } from "@/repositories/empleadosRepository";
 import { formatearMoneda } from "@/lib/format";
 
 const PROXIMOS_PEDIDOS_LIMIT = 5;
@@ -28,6 +30,16 @@ function fechaISO(offsetDias = 0): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Semana en curso, lunes a domingo (convención local) -- "verla toda" incluye lo que ya venció
+// dentro de la semana, no solo lo que falta, mismo criterio que "Próximos pedidos a entregar".
+function finDeSemanaISO(): string {
+  const hoy = new Date();
+  const dia = hoy.getDay();
+  const diasHastaDomingo = dia === 0 ? 0 : 7 - dia;
+  hoy.setDate(hoy.getDate() + diasHastaDomingo);
+  return hoy.toISOString().slice(0, 10);
+}
+
 export default async function AdminHome() {
   const session = await getServerSession();
   const supabase = await createClient();
@@ -35,6 +47,7 @@ export default async function AdminHome() {
   const ayer = fechaISO(-1);
   const hace7Dias = fechaISO(-7);
   const hace29Dias = fechaISO(-29);
+  const finDeSemana = finDeSemanaISO();
 
   const [
     turnoAbierto,
@@ -46,6 +59,8 @@ export default async function AdminHome() {
     controlesStock,
     ingresosMercaderia,
     proximosPedidos,
+    produccionPendiente,
+    empleados,
   ] = await Promise.all([
     getTurnoAbierto(supabase),
     resumenVentasPorRango(supabase, { desde: hoy, hasta: hoy }),
@@ -60,6 +75,8 @@ export default async function AdminHome() {
       pageSize: PROXIMOS_PEDIDOS_LIMIT,
       estado: "pendiente",
     }),
+    listProduccionesPendientesHasta(supabase, { hasta: finDeSemana }),
+    listEmpleados(supabase),
   ]);
 
   const controlesPendientes = controlesStock.filter((c) => c.estado === "pendiente_aprobacion");
@@ -176,6 +193,47 @@ export default async function AdminHome() {
                     >
                       {new Date(`${p.fecha_entrega}T00:00:00`).toLocaleDateString("es-AR")}
                     </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {produccionPendiente.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <Factory className="size-4 text-muted-foreground" />
+                Producción pendiente de la semana
+              </span>
+              <Link href="/admin/produccion" className="text-sm font-normal underline">
+                Ver todas
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {produccionPendiente.map((p) => {
+                const vencida = p.fecha_entrega < hoy;
+                const empleado = empleados.find((e) => e.id === p.empleado_id)?.nombre ?? "—";
+                return (
+                  <li key={p.id}>
+                    <Link
+                      href={`/admin/produccion/${p.id}`}
+                      className="flex items-center justify-between gap-4 hover:underline"
+                    >
+                      <span className="truncate">
+                        {empleado} — {p.cantidadItems} producto{p.cantidadItems === 1 ? "" : "s"}
+                      </span>
+                      <span
+                        className={`shrink-0 ${vencida ? "font-medium text-destructive" : "text-muted-foreground"}`}
+                      >
+                        {new Date(`${p.fecha_entrega}T00:00:00`).toLocaleDateString("es-AR")}
+                      </span>
+                    </Link>
                   </li>
                 );
               })}

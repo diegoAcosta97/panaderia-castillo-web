@@ -95,6 +95,28 @@ export async function listProductosControlaStock(
   return data;
 }
 
+// E16-1: productos elegibles para armar una producción -- controlan stock (no tiene sentido
+// "producir" algo que no lleva stock) y pertenecen a una categoría habilitada para producción
+// (docs/backlog/16-produccion.md). Join embebido (mismo criterio que el filtro por medio de pago
+// en listVentas) en vez de traer todo y filtrar en JS.
+export async function listProductosParaProduccion(
+  supabase: SupabaseClient<Database>,
+): Promise<Producto[]> {
+  const { data, error } = await supabase
+    .from("productos")
+    .select("*, categorias!inner(habilitada_produccion)")
+    .eq("controla_stock", true)
+    .eq("categorias.habilitada_produccion", true)
+    .eq("activo", true)
+    .order("nombre");
+  if (error) throw error;
+  return ((data ?? []) as (Producto & { categorias?: unknown })[]).map((row) => {
+    const producto = { ...row };
+    delete producto.categorias;
+    return producto;
+  });
+}
+
 export async function buscarPorCodigoBarras(
   supabase: SupabaseClient<Database>,
   codigoBarras: string,

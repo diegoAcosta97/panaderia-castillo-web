@@ -63,6 +63,34 @@ function ActivaCell({ categoria }: { categoria: Categoria }) {
   );
 }
 
+// E16-1: qué categorías se pueden listar al armar una producción (docs/backlog/16-produccion.md)
+// -- checkbox editable en vez de filtrar por nombre, mismo criterio que "Activa" acá al lado.
+function HabilitadaProduccionCell({ categoria }: { categoria: Categoria }) {
+  const [isPending, startTransition] = useTransition();
+  const [habilitada, setHabilitada] = useState(categoria.habilitada_produccion);
+
+  function handleChange(nuevoValor: boolean) {
+    setHabilitada(nuevoValor);
+    startTransition(async () => {
+      try {
+        throwIfActionError(
+          await actualizarCategoria(categoria.id, { habilitada_produccion: nuevoValor }),
+        );
+      } catch {
+        setHabilitada(!nuevoValor);
+      }
+    });
+  }
+
+  return (
+    <Checkbox
+      checked={habilitada}
+      onCheckedChange={(checked) => handleChange(checked === true)}
+      disabled={isPending}
+    />
+  );
+}
+
 export function CategoriasTable() {
   const table = useCategoriasTable();
 
@@ -77,6 +105,11 @@ export function CategoriasTable() {
         accessorKey: "activo",
         header: "Activa",
         cell: ({ row }) => <ActivaCell categoria={row.original} />,
+      },
+      {
+        accessorKey: "habilitada_produccion",
+        header: "Habilitada para producción",
+        cell: ({ row }) => <HabilitadaProduccionCell categoria={row.original} />,
       },
     ],
     [],

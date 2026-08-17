@@ -37,7 +37,7 @@ export async function crearCategoria(nombre: string): Promise<ActionResult<Categ
 
 export async function actualizarCategoria(
   id: string,
-  patch: Partial<Pick<Categoria, "nombre" | "activo">>,
+  patch: Partial<Pick<Categoria, "nombre" | "activo" | "habilitada_produccion">>,
 ): Promise<ActionResult<void>> {
   return ejecutarAccion(async () => {
     await requireAdmin();

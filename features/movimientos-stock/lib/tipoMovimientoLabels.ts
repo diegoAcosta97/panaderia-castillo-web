@@ -10,6 +10,7 @@ export const TIPO_MOVIMIENTO_LABELS: Record<TipoMovimientoStock, string> = {
   merma: "Merma",
   consumo_interno: "Consumo interno",
   ingreso_mercaderia: "Ingreso de mercadería",
+  produccion_propia: "Producción propia",
 };
 
 export const TIPOS_MOVIMIENTO_ORDENADOS = Object.keys(

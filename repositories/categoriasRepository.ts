@@ -50,7 +50,7 @@ export async function crearCategoria(
 export async function actualizarCategoria(
   supabase: SupabaseClient<Database>,
   id: string,
-  patch: Partial<Pick<Categoria, "nombre" | "activo">>,
+  patch: Partial<Pick<Categoria, "nombre" | "activo" | "habilitada_produccion">>,
 ): Promise<void> {
   const { error } = await supabase.from("categorias").update(patch).eq("id", id);
   if (error) throw error;

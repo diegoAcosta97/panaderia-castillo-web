@@ -13,8 +13,10 @@ relevados. Si aparece el modelo original, se compara contra esto y se ajusta.
 - `rol_usuario`: `administrador` | `cajero`
 - `tipo_venta_producto`: `unidad` | `peso`
 - `tipo_movimiento_stock`: `venta` | `anulacion_venta` | `etiqueta_generada` |
-  `ajuste_control_stock` | `alta_inicial` | `merma` | `consumo_interno` | `ingreso_mercaderia`
-  (`merma`/`consumo_interno`, EPIC 14; `ingreso_mercaderia`, EPIC 15)
+  `ajuste_control_stock` | `alta_inicial` | `merma` | `consumo_interno` | `ingreso_mercaderia` |
+  `produccion_propia`
+  (`merma`/`consumo_interno`, EPIC 14; `ingreso_mercaderia`, EPIC 15; `produccion_propia`, EPIC 16)
+- `estado_produccion`: `pendiente` | `completado` | `cancelado` (EPIC 16)
 - `estado_caja_turno`: `abierta` | `cerrada`
 - `estado_venta`: `pendiente_pago` | `completada` | `anulada`
 - `medio_pago`: `efectivo` | `mercado_pago` | `sena_pedido` | `tarjeta_debito` | `tarjeta_credito`
@@ -395,6 +397,42 @@ el `stock_actual` vigente en ese momento, no sobre `stock_previo`, para no perde
 concurrentes. A diferencia de `controles_stock`, no hay policies de insert/update para
 `authenticated`: las tres transiciones son exclusivamente vía funciones `SECURITY DEFINER`.
 
+## Producción propia (EPIC 16)
+
+### `producciones`
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| empleado_id | uuid | FK a `empleados.id`, quien la produce |
+| usuario_id | uuid | FK a `perfiles.id`, admin que la carga |
+| fecha_pedido | date | |
+| fecha_entrega | date | >= fecha_pedido |
+| estado | estado_produccion | default `pendiente` |
+| usuario_completo_id | uuid, nullable | FK a `perfiles.id` — null hasta completar |
+| fecha_completado | timestamptz, nullable | |
+| observaciones | text, nullable | |
+| created_at | timestamptz | default now() |
+
+### `produccion_items`
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | uuid PK | |
+| produccion_id | uuid | FK a `producciones.id` |
+| producto_id | uuid | FK a `productos.id` (solo `controla_stock = true` de una categoría con `habilitada_produccion = true`) |
+| cantidad_pedida | numeric(12,3) | planificada al cargar; `0` si el producto se agregó recién al completar |
+| cantidad_producida | numeric(12,3), nullable | null mientras sigue `pendiente`, se completa al confirmar |
+| diferencia | numeric(12,3), generada | `cantidad_producida - cantidad_pedida`, mismo patrón que `control_stock_detalles.diferencia` |
+
+Todo el flujo es exclusivamente admin (a diferencia de `ingreso_mercaderia`, acá no hay una rama
+"lo carga un cajero"): `crear_produccion` da de alta la producción + items planificados;
+`completar_produccion` ratifica `cantidad_producida` de cada item (exige que cubra todos los
+planificados, admite agregar productos no planificados con `cantidad_pedida = 0`) y por cada
+`cantidad_producida > 0` suma `productos.stock_actual` + deja un `movimientos_stock` con
+`tipo = 'produccion_propia'`; `cancelar_produccion` solo cambia el estado a `cancelado` si sigue
+`pendiente` (no hay nada que revertir, todavía no tocó stock). Sin policies de insert/update para
+`authenticated`, mismo endurecimiento que `ingresos_mercaderia`. Una producción `pendiente` no se
+edita — se cancela y se vuelve a cargar si hace falta corregir algo.
+
 ## Relaciones — resumen
 
 ```
@@ -402,7 +440,9 @@ perfiles ──< caja_turnos (apertura/cierre)
 perfiles ──< ventas (cajero)
 perfiles ──< gastos, etiqueta_lotes, controles_stock, movimientos_stock (usuario)
 perfiles ──< ingresos_mercaderia (usuario, usuario_aprobador — EPIC 15)
+perfiles ──< producciones (usuario, usuario_completo — EPIC 16)
 empleados ──< movimientos_stock (empleado_id, solo consumo_interno — EPIC 14)
+empleados ──< producciones (empleado_id — EPIC 16)
 
 categorias ──< productos
 productos ──< oferta_items >── ofertas
@@ -410,6 +450,7 @@ productos ──< descuento_condiciones >── descuentos
 productos ──< renglones_venta >── ventas
 productos ──< movimientos_stock
 productos ──< etiqueta_lotes
+productos ──< produccion_items >── producciones (EPIC 16)
 productos ──< control_stock_detalles >── controles_stock
 productos ──< ingreso_mercaderia_items >── ingresos_mercaderia
 

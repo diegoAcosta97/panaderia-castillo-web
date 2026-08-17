@@ -18,8 +18,8 @@ Documentos de referencia (leer antes de las tareas):
 
 Las epics 0 a 13 están implementadas y verificadas contra el proyecto de Supabase real y un
 navegador real — ver el detalle y las notas de verificación en cada archivo de epic. EPIC 14 está
-implementada (ver el archivo de la epic). EPIC 15 está implementada y verificada contra la base
-real (falta verificación en navegador real, ver notas de la epic).
+implementada (ver el archivo de la epic). EPIC 15 y EPIC 16 están implementadas y verificadas
+contra la base real (falta verificación en navegador real en ambas, ver notas de cada epic).
 
 ## Índice de EPICs
 
@@ -41,6 +41,7 @@ real (falta verificación en navegador real, ver notas de la epic).
 | 13 | [13-seguridad.md](./13-seguridad.md) | RLS transversal y auditoría final |
 | 14 | [14-mermas-consumo-interno.md](./14-mermas-consumo-interno.md) | Registro de merma y consumo interno como movimientos de stock |
 | 15 | [15-ingreso-mercaderia.md](./15-ingreso-mercaderia.md) | Alta de stock por compra a proveedor, con aprobación si la carga un cajero |
+| 16 | [16-produccion.md](./16-produccion.md) | Producción propia (sanguchería/panadería): pedido de producción, ratificación de cantidades e incremento de stock |
 
 ## Decisiones registradas
 

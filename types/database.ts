@@ -15,7 +15,8 @@ export type TipoMovimientoStock =
   | "alta_inicial"
   | "merma"
   | "consumo_interno"
-  | "ingreso_mercaderia";
+  | "ingreso_mercaderia"
+  | "produccion_propia";
 export type EstadoCajaTurno = "abierta" | "cerrada";
 export type TipoBeneficioOferta = "precio_fijo" | "descuento_porcentaje" | "descuento_monto";
 export type TipoEfectoDescuento = "porcentaje" | "monto_fijo";
@@ -40,6 +41,7 @@ export type EstadoControlStock =
 export type TipoCobroEmpleado = "por_dia" | "quincena";
 export type EstadoPedidoEncargo = "pendiente" | "entregado" | "cancelado";
 export type EstadoIngresoMercaderia = "pendiente_aprobacion" | "aprobado" | "rechazado";
+export type EstadoProduccion = "pendiente" | "completado" | "cancelado";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -178,16 +180,19 @@ export interface Database {
           id: string;
           nombre: string;
           activo: boolean;
+          habilitada_produccion: boolean;
         };
         Insert: {
           id?: string;
           nombre: string;
           activo?: boolean;
+          habilitada_produccion?: boolean;
         };
         Update: {
           id?: string;
           nombre?: string;
           activo?: boolean;
+          habilitada_produccion?: boolean;
         };
         Relationships: [];
       };
@@ -423,6 +428,70 @@ export interface Database {
           cantidad?: number;
           stock_previo?: number;
           stock_resultante?: number | null;
+        };
+        Relationships: [];
+      };
+      producciones: {
+        Row: {
+          id: string;
+          empleado_id: string;
+          usuario_id: string;
+          fecha_pedido: string;
+          fecha_entrega: string;
+          estado: EstadoProduccion;
+          usuario_completo_id: string | null;
+          fecha_completado: string | null;
+          observaciones: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          empleado_id: string;
+          usuario_id: string;
+          fecha_pedido: string;
+          fecha_entrega: string;
+          estado?: EstadoProduccion;
+          usuario_completo_id?: string | null;
+          fecha_completado?: string | null;
+          observaciones?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          empleado_id?: string;
+          usuario_id?: string;
+          fecha_pedido?: string;
+          fecha_entrega?: string;
+          estado?: EstadoProduccion;
+          usuario_completo_id?: string | null;
+          fecha_completado?: string | null;
+          observaciones?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      produccion_items: {
+        Row: {
+          id: string;
+          produccion_id: string;
+          producto_id: string;
+          cantidad_pedida: number;
+          cantidad_producida: number | null;
+          diferencia: number | null;
+        };
+        Insert: {
+          id?: string;
+          produccion_id: string;
+          producto_id: string;
+          cantidad_pedida?: number;
+          cantidad_producida?: number | null;
+        };
+        Update: {
+          id?: string;
+          produccion_id?: string;
+          producto_id?: string;
+          cantidad_pedida?: number;
+          cantidad_producida?: number | null;
         };
         Relationships: [];
       };
@@ -1129,6 +1198,29 @@ export interface Database {
         };
         Returns: Json;
       };
+      crear_produccion: {
+        Args: {
+          p_empleado_id: string;
+          p_fecha_pedido: string;
+          p_fecha_entrega: string;
+          p_items: Json;
+          p_observaciones: string | null;
+        };
+        Returns: Json;
+      };
+      completar_produccion: {
+        Args: {
+          p_produccion_id: string;
+          p_items: Json;
+        };
+        Returns: Json;
+      };
+      cancelar_produccion: {
+        Args: {
+          p_produccion_id: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       rol_usuario: RolUsuario;
@@ -1144,6 +1236,7 @@ export interface Database {
       estado_control_stock: EstadoControlStock;
       estado_pedido_encargo: EstadoPedidoEncargo;
       estado_ingreso_mercaderia: EstadoIngresoMercaderia;
+      estado_produccion: EstadoProduccion;
     };
     CompositeTypes: Record<never, never>;
   };
