@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { actualizarUsuario } from "@/features/usuarios/actions";
+import { CambiarPasswordUsuarioDialog } from "@/features/usuarios/components/CambiarPasswordUsuarioDialog";
 import { NuevoUsuarioDialog } from "@/features/usuarios/components/NuevoUsuarioDialog";
 import { useUsuariosTable } from "@/features/usuarios/hooks/useUsuariosTable";
 import { throwIfActionError } from "@/lib/actionResult";
@@ -106,6 +107,15 @@ export function UsuariosTable() {
         accessorKey: "activo",
         header: "Activo",
         cell: ({ row }) => <ActivoCell perfil={row.original} />,
+      },
+      {
+        id: "acciones",
+        header: "",
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <CambiarPasswordUsuarioDialog perfil={row.original} />
+          </div>
+        ),
       },
     ],
     [],

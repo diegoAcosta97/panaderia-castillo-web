@@ -47,6 +47,19 @@ export async function crearUsuario(input: {
   }, "No se pudo crear el usuario");
 }
 
+export async function cambiarPasswordUsuario(
+  id: string,
+  passwordNueva: string,
+): Promise<ActionResult<void>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.updateUserById(id, { password: passwordNueva });
+    if (error) throw error;
+  }, "No se pudo cambiar la contraseña");
+}
+
 export async function actualizarUsuario(
   id: string,
   patch: { rol?: RolUsuario; activo?: boolean; nombreCompleto?: string },

@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
+import { CambiarPasswordDialog } from "@/features/perfil/components/CambiarPasswordDialog";
 import type { Session } from "@/features/auth/types";
 
 interface Seccion {
@@ -255,6 +256,7 @@ export function AdminSidebar({ session }: { session: Session | null }) {
           <p className="truncate px-1 text-xs text-sidebar-foreground/60">
             {session?.perfil.nombre_completo || session?.perfil.email} · {session?.rol}
           </p>
+          <CambiarPasswordDialog />
           <LogoutButton />
         </div>
       </aside>

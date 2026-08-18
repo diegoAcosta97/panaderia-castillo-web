@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
+import { CambiarPasswordDialog } from "@/features/perfil/components/CambiarPasswordDialog";
 
 const SECCIONES = [
   { href: "/pos", label: "Venta", icon: ShoppingCart, exact: true },
@@ -133,7 +134,8 @@ export function PosSidebar() {
           })}
         </nav>
 
-        <div className="border-t border-[#4a3520] p-3 text-foreground">
+        <div className="flex flex-col gap-2 border-t border-[#4a3520] p-3 text-foreground">
+          <CambiarPasswordDialog />
           <LogoutButton />
         </div>
       </aside>
