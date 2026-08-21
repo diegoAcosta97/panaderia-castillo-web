@@ -99,3 +99,31 @@ export async function eliminarProducto(id: string): Promise<ActionResult<void>> 
     revalidatePath("/admin/productos");
   }, "No se pudo eliminar el producto");
 }
+
+// Borra uno por uno en vez de un solo delete con `in (...)`: así un producto con historial (que
+// la FK rechaza) no aborta a los demás -- se reporta aparte en `noEliminados` en lugar de fallar
+// todo el lote (mismo criterio de eliminarProducto, aplicado ítem por ítem).
+export async function eliminarProductos(
+  ids: string[],
+): Promise<ActionResult<{ eliminados: string[]; noEliminados: string[] }>> {
+  return ejecutarAccion(async () => {
+    await requireAdmin();
+    const supabase = await createClient();
+    const eliminados: string[] = [];
+    const noEliminados: string[] = [];
+    for (const id of ids) {
+      try {
+        await eliminarProductoRepo(supabase, id);
+        eliminados.push(id);
+      } catch (err) {
+        if (isPostgresErrorCode(err, POSTGRES_FOREIGN_KEY_VIOLATION)) {
+          noEliminados.push(id);
+        } else {
+          throw err;
+        }
+      }
+    }
+    revalidatePath("/admin/productos");
+    return { eliminados, noEliminados };
+  }, "No se pudieron eliminar los productos");
+}

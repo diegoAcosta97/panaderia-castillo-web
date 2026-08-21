@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProductoDialog } from "@/features/productos/components/ProductoDialog";
 import { EliminarProductoDialog } from "@/features/productos/components/EliminarProductoDialog";
+import { EliminarProductosDialog } from "@/features/productos/components/EliminarProductosDialog";
 import { actualizarProducto } from "@/features/productos/actions";
 import { useProductosTable } from "@/features/productos/hooks/useProductosTable";
 import { listProductos } from "@/repositories/productosRepository";
@@ -56,6 +57,35 @@ export function ProductosTable({
   const [exportando, setExportando] = useState(false);
   const [errorExport, setErrorExport] = useState<string | null>(null);
   const [listado, setListado] = useState<(string | number)[][] | null>(null);
+  // Mapa id -> nombre en vez de un Set: la selección persiste entre páginas/filtros (no se
+  // limpia solo porque la fila deja de estar visible), y el nombre queda a mano para mostrarlo
+  // en el diálogo de confirmación y en el reporte de "no se pudo eliminar" sin depender de que
+  // esa fila siga cargada en `table.data`.
+  const [seleccionados, setSeleccionados] = useState<Map<string, string>>(new Map());
+
+  function toggleSeleccionado(producto: Producto, checked: boolean) {
+    setSeleccionados((prev) => {
+      const next = new Map(prev);
+      if (checked) next.set(producto.id, producto.nombre);
+      else next.delete(producto.id);
+      return next;
+    });
+  }
+
+  const idsVisibles = table.data.map((p) => p.id);
+  const todosVisiblesSeleccionados =
+    idsVisibles.length > 0 && idsVisibles.every((id) => seleccionados.has(id));
+
+  function toggleTodosVisibles(checked: boolean) {
+    setSeleccionados((prev) => {
+      const next = new Map(prev);
+      for (const producto of table.data) {
+        if (checked) next.set(producto.id, producto.nombre);
+        else next.delete(producto.id);
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!listado) return;
@@ -94,6 +124,23 @@ export function ProductosTable({
 
   const columns = useMemo<ColumnDef<Producto, unknown>[]>(
     () => [
+      {
+        id: "seleccionar",
+        header: () => (
+          <Checkbox
+            checked={todosVisiblesSeleccionados}
+            onCheckedChange={(checked) => toggleTodosVisibles(checked === true)}
+            aria-label="Seleccionar todos los productos de esta página"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={seleccionados.has(row.original.id)}
+            onCheckedChange={(checked) => toggleSeleccionado(row.original, checked === true)}
+            aria-label={`Seleccionar ${row.original.nombre}`}
+          />
+        ),
+      },
       {
         accessorKey: "nombre",
         header: "Nombre",
@@ -141,7 +188,7 @@ export function ProductosTable({
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [categorias],
+    [categorias, table.data, seleccionados, todosVisiblesSeleccionados],
   );
 
   return (
@@ -207,6 +254,24 @@ export function ProductosTable({
       </div>
 
       {errorExport && <p className="text-sm text-destructive">{errorExport}</p>}
+
+      {seleccionados.size > 0 && (
+        <div className="flex items-center justify-between rounded-lg border bg-muted/50 px-3 py-2">
+          <p className="text-sm">{seleccionados.size} producto(s) seleccionado(s)</p>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setSeleccionados(new Map())}>
+              Cancelar selección
+            </Button>
+            <EliminarProductosDialog
+              seleccionados={seleccionados}
+              onTerminado={() => {
+                setSeleccionados(new Map());
+                table.refetch();
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <DataTable
         columns={columns}
