@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import { listProveedoresPaginated } from "@/repositories/proveedoresRepository";
 import type { Proveedor } from "@/repositories/proveedoresRepository";
 
@@ -37,6 +38,8 @@ export function useProveedoresTable() {
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
   }, [fetchData]);
+
+  useRefetchOnReturn(fetchData);
 
   return {
     data,

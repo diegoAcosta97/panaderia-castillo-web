@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import {
   listPagosEmpleadosPaginated,
   sumaPagosEmpleadosFiltrados,
@@ -54,6 +55,8 @@ export function usePagosEmpleadosTable() {
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
   }, [fetchData]);
+
+  useRefetchOnReturn(fetchData);
 
   function setEmpleadoId(value: string) {
     setEmpleadoIdState(value);

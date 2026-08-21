@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import { listBloqueoCajaDiferenciasPaginated } from "@/repositories/bloqueoCajaRepository";
 import type { BloqueoCajaDiferencia } from "@/repositories/bloqueoCajaRepository";
 
@@ -46,6 +47,8 @@ export function useDiferenciasBloqueoCajaTable() {
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
   }, [fetchData]);
+
+  useRefetchOnReturn(fetchData);
 
   function setProductoId(value: string) {
     setProductoIdState(value);

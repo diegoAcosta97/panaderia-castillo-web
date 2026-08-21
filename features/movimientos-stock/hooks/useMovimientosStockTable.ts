@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import { listMovimientosStockPaginated } from "@/repositories/movimientosStockRepository";
 import type { MovimientoStock } from "@/repositories/movimientosStockRepository";
 import type { TipoMovimientoStock } from "@/types/database";
@@ -47,6 +48,8 @@ export function useMovimientosStockTable() {
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
   }, [fetchData]);
+
+  useRefetchOnReturn(fetchData);
 
   function setTipo(value: string) {
     setTipoState(value);

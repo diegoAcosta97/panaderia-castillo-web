@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import { listIngresosMercaderiaPaginated } from "@/repositories/ingresoMercaderiaRepository";
 import type { IngresoMercaderia } from "@/repositories/ingresoMercaderiaRepository";
 
@@ -37,6 +38,8 @@ export function useIngresosMercaderiaTable() {
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
   }, [fetchData]);
+
+  useRefetchOnReturn(fetchData);
 
   return {
     data,

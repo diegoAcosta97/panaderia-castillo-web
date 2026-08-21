@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import {
   listVentasPaginated,
   resumenVentasFiltro,
@@ -83,6 +84,13 @@ export function useVentasTable(opciones?: { cajaTurnoIdFijo?: string }) {
   useEffect(() => {
     Promise.resolve().then(() => fetchResumen());
   }, [fetchResumen]);
+
+  useRefetchOnReturn(
+    useCallback(() => {
+      fetchData();
+      fetchResumen();
+    }, [fetchData, fetchResumen])
+  );
 
   function setCajaTurnoId(value: string) {
     setCajaTurnoIdState(value);

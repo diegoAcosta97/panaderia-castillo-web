@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import { listPedidosEncargoPaginated } from "@/repositories/pedidosEncargoRepository";
 import type { PedidoEncargoConDetalle } from "@/repositories/pedidosEncargoRepository";
 import type { EstadoPedidoEncargo } from "@/types/database";
@@ -43,6 +44,8 @@ export function usePedidosEncargoTable() {
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
   }, [fetchData]);
+
+  useRefetchOnReturn(fetchData);
 
   function setEstado(value: string) {
     setEstadoState(value);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import { listProductosPaginated } from "@/repositories/productosRepository";
 import type { Producto } from "@/repositories/productosRepository";
 
@@ -56,6 +57,8 @@ export function useProductosTable() {
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
   }, [fetchData]);
+
+  useRefetchOnReturn(fetchData);
 
   function setCategoriaId(value: string) {
     setCategoriaIdState(value);

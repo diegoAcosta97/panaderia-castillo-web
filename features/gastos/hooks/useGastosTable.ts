@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SortingState } from "@tanstack/react-table";
 import { createClient } from "@/lib/supabase/client";
+import { useRefetchOnReturn } from "@/hooks/useRefetchOnReturn";
 import { listGastosPaginated, sumaGastosFiltrados } from "@/repositories/gastosRepository";
 import type { Gasto } from "@/repositories/gastosRepository";
 
@@ -46,6 +47,8 @@ export function useGastosTable() {
   useEffect(() => {
     Promise.resolve().then(() => fetchData());
   }, [fetchData]);
+
+  useRefetchOnReturn(fetchData);
 
   // Cambiar un filtro mientras se está en, por ejemplo, la página 3 del resultado anterior
   // dejaría una página vacía o con datos de otro conjunto -- siempre se vuelve a la primera.
