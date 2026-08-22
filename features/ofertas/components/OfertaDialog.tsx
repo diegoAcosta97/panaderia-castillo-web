@@ -106,7 +106,7 @@ export function OfertaDialog({
     [itemsValidos, productos],
   );
   const advertenciaBeneficio = useMemo(() => {
-    if (itemsValidos.length < 2 || !valorBeneficio) return null;
+    if (itemsValidos.length < 1 || !valorBeneficio) return null;
     const beneficio = calcularBeneficioPorAplicacion(
       tipoBeneficio,
       Number(valorBeneficio),
@@ -198,8 +198,8 @@ export function OfertaDialog({
           <DialogHeader>
             <DialogTitle>{esEdicion ? "Editar oferta" : "Nueva oferta"}</DialogTitle>
             <DialogDescription>
-              Un combo de 2 o más productos que, juntos en las cantidades indicadas, disparan el
-              beneficio.
+              Uno o más productos que, juntos en las cantidades indicadas, disparan el beneficio
+              (ej. 1 docena de facturas a $10.000, o 1 pan + 1 gaseosa con descuento).
             </DialogDescription>
           </DialogHeader>
 

@@ -21,7 +21,11 @@ export interface OfertaInput {
   items: OfertaItemInput[];
 }
 
-const MIN_ITEMS_OFERTA = 2;
+// RF-2.1 (revisado 2026-08-21): antes exigía 2+ productos distintos (combo); el dueño pidió
+// poder cargar una oferta de un solo producto con cantidad > 1 (ej. "1 docena de facturas a
+// $10.000" = 1 producto, cantidad_requerida 12) -- el motor de evaluación (evaluarOfertas) ya
+// funcionaba igual con 1 item, la única barrera era este mínimo.
+const MIN_ITEMS_OFERTA = 1;
 
 export async function listOfertas(
   supabase: SupabaseClient<Database>,
@@ -98,7 +102,7 @@ export async function crearOferta(
   input: OfertaInput,
 ): Promise<Oferta> {
   if (input.items.length < MIN_ITEMS_OFERTA) {
-    throw new Error("Una oferta necesita al menos 2 productos (RF-2.1).");
+    throw new Error("Una oferta necesita al menos 1 producto (RF-2.1).");
   }
 
   const { data: oferta, error } = await supabase
@@ -126,7 +130,7 @@ export async function actualizarOferta(
   input: OfertaInput,
 ): Promise<void> {
   if (input.items.length < MIN_ITEMS_OFERTA) {
-    throw new Error("Una oferta necesita al menos 2 productos (RF-2.1).");
+    throw new Error("Una oferta necesita al menos 1 producto (RF-2.1).");
   }
 
   const { error } = await supabase.from("ofertas").update(datosOferta(input)).eq("id", id);

@@ -33,9 +33,11 @@ cliente / programa de fidelización.
 
 ## RF-2 — Ofertas (combos)
 
-- RF-2.1 Una oferta combina **2 o más productos** que, al aparecer juntos en una venta en las
+- RF-2.1 Una oferta combina **1 o más productos** que, al aparecer juntos en una venta en las
   cantidades requeridas, disparan un beneficio (precio fijo especial para el combo, o un
-  descuento en $ o % sobre la suma de esos productos).
+  descuento en $ o % sobre la suma de esos productos). Con un solo producto sirve para precios
+  por cantidad (ej. "1 docena de facturas a $10.000" = 1 producto, cantidad requerida 12).
+  (Revisado 2026-08-21: antes exigía 2 o más productos distintos.)
 - RF-2.2 La oferta se aplica **automáticamente** al detectar la combinación en el carrito, sin
   que el cajero tenga que hacer nada.
 - RF-2.3 Si hay cantidad suficiente en el carrito, la oferta se aplica **repetidamente** (ej. 4

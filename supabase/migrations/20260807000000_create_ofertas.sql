@@ -1,9 +1,9 @@
--- E6-1: ofertas (combos de 2+ productos) — docs/backlog/06-ofertas-descuentos.md
+-- E6-1: ofertas (combos de 1+ productos) — docs/backlog/06-ofertas-descuentos.md
 --
--- El mínimo de 2 productos por oferta (RF-2.1) se valida en la capa de servicio
--- (repositories/ofertasRepository.ts), no acá: un check constraint no puede contar filas de
--- otra tabla. Lectura abierta a cualquier autenticado (el motor de evaluación de EPIC 7 corre
--- del lado del cajero). Escritura solo administrador.
+-- El mínimo de productos por oferta (RF-2.1; 1 desde E6-8, antes exigía 2) se valida en la capa
+-- de servicio (repositories/ofertasRepository.ts), no acá: un check constraint no puede contar
+-- filas de otra tabla. Lectura abierta a cualquier autenticado (el motor de evaluación de
+-- EPIC 7 corre del lado del cajero). Escritura solo administrador.
 
 create type public.tipo_beneficio_oferta as enum (
   'precio_fijo',

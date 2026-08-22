@@ -97,13 +97,28 @@ export function evaluarOfertas(
 ): OfertaAplicada[] {
   const aplicadas: OfertaAplicada[] = [];
 
+  // Dos ofertas vigentes pueden compartir un producto (ej. "combo café + 2 facturas" y "docena
+  // de facturas" comparten "facturas") -- evaluarlas cada una contra el total del carrito sin
+  // descontar lo que ya reservó una oferta anterior deja aplicar ambas con menos unidades de las
+  // que hacen falta entre las dos (12 facturas alcanzarían para "aplicar" un combo de 2 + una
+  // docena de 12, cuando en realidad hacen falta 14). Este mapa lleva cuánto de cada producto
+  // sigue disponible a medida que se van aplicando ofertas, en el mismo orden en que llegan acá.
+  const disponible = new Map<string, number>();
+  function cantidadDisponible(productoId: string): number {
+    const actual = disponible.get(productoId);
+    if (actual !== undefined) return actual;
+    const inicial = cantidadEnCarrito(renglones, productoId);
+    disponible.set(productoId, inicial);
+    return inicial;
+  }
+
   for (const oferta of ofertas) {
     if (!estaVigente(oferta, fecha)) continue;
-    if (oferta.items.length < 2) continue;
+    if (oferta.items.length < 1) continue;
 
     const vecesPosibles = Math.min(
       ...oferta.items.map((item) =>
-        Math.floor(cantidadEnCarrito(renglones, item.producto_id) / item.cantidad_requerida),
+        Math.floor(cantidadDisponible(item.producto_id) / item.cantidad_requerida),
       ),
     );
     if (!Number.isFinite(vecesPosibles) || vecesPosibles <= 0) continue;
@@ -124,6 +139,13 @@ export function evaluarOfertas(
     // descuento sin efecto real) no suma nada y no debería aparecer en la venta -- ver
     // advertencia en OfertaDialog para evitar llegar a este caso.
     if (beneficioPorAplicacion <= 0) continue;
+
+    for (const item of oferta.items) {
+      disponible.set(
+        item.producto_id,
+        cantidadDisponible(item.producto_id) - vecesAplicada * item.cantidad_requerida,
+      );
+    }
 
     aplicadas.push({
       oferta,

@@ -198,8 +198,10 @@ necesitar sus propias policies.
 | producto_id | uuid | FK a `productos.id` |
 | cantidad_requerida | numeric(12,3) | unidades o kg del producto, por cada aplicación del combo |
 
-Constraint: una oferta tiene al menos 2 `oferta_items` (regla de negocio, validada en la capa de
-servicio; no siempre expresable como constraint de tabla).
+Constraint: una oferta tiene al menos 1 `oferta_item` (regla de negocio, validada en la capa de
+servicio; no siempre expresable como constraint de tabla). Antes del 2026-08-21 exigía al menos 2
+(combo de productos distintos); se relajó a 1 para permitir precio fijo por cantidad de un solo
+producto (RF-2.1).
 
 ## Descuentos
 

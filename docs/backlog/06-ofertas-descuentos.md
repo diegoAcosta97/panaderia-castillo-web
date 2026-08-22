@@ -1,7 +1,7 @@
 # EPIC 6 — Ofertas y descuentos
 
-Combos (2+ productos) y reglas condicionales sobre el total de la venta (RF-2, RF-3). El motor
-de evaluación (E6-5) es la pieza que consume el punto de venta en EPIC 7.
+Combos (1+ productos, ver E6-8) y reglas condicionales sobre el total de la venta (RF-2, RF-3).
+El motor de evaluación (E6-5) es la pieza que consume el punto de venta en EPIC 7.
 
 ---
 
@@ -179,6 +179,53 @@ de evaluación (E6-5) es la pieza que consume el punto de venta en EPIC 7.
         (la condición pide efectivo) — verificado con datos sintéticos
   - [x] Con una oferta aplicada + medio de pago que matchea la condición, el descuento queda
         suprimido igual (`descuentosSuprimidosPorOferta = true`) — verificado igual
+
+---
+
+### E6-8 — Ofertas de un solo producto (precio por cantidad) ✅ Hecho (2026-08-21)
+- **Descripción:** pedido del dueño: poder cargar una oferta de "1 docena de facturas a
+  $10.000" (1 solo producto, cantidad requerida > 1), algo que RF-2.1 no permitía antes (exigía
+  2+ productos distintos, pensado como combo). El motor de evaluación (`evaluarOfertas`) ya
+  funcionaba igual con 1 solo item -- la única barrera era el mínimo hardcodeado. Se baja
+  `MIN_ITEMS_OFERTA` de 2 a 1 en `ofertasRepository` (mismo mensaje de error, ajustado), se baja
+  el mismo mínimo en el guard de `evaluarOfertas`, y se actualiza el texto de `OfertaDialog`
+  (ya no dice "combo de 2 o más") y el gate de la advertencia de "sin beneficio real" (antes solo
+  se calculaba con 2+ items, ahora también avisa con 1 si el precio fijo/descuento no da ningún
+  ahorro real).
+- **Depende de:** E6-3, E6-5, E6-6
+- **Archivos/módulos:** `repositories/ofertasRepository.ts`, `services/beneficiosService.ts`,
+  `features/ofertas/components/OfertaDialog.tsx`
+- **Cambios de base de datos:** — (el mínimo siempre vivió en la capa de servicio, no en un
+  constraint de tabla, ver E6-1)
+- **Criterios de aceptación:**
+  - [x] Se puede guardar una oferta con 1 solo producto (ej. facturas, cantidad_requerida 12,
+        precio_fijo $10.000)
+  - [x] `evaluarOfertas` aplica esa oferta cuando el carrito tiene 12+ facturas, con el mismo
+        cálculo de "veces posibles" (`Math.floor(cantidad / cantidad_requerida)`) que ya usaba
+        para combos de varios productos
+  - [x] `tsc --noEmit` y `eslint` sin errores sobre los archivos tocados
+
+---
+
+### E6-9 — Ofertas que comparten un producto no validaban la cantidad combinada ✅ Hecho (2026-08-21)
+- **Descripción:** bug reportado por el dueño: con "COMBO CAFE CON LECHE Y 2 FACTURAS" (2
+  facturas) y "DOCENA DE FACTURAS" (12 facturas) vigentes a la vez, un carrito con 12 facturas
+  (sin las 14 que hacen falta para las dos) aplicaba igual las dos ofertas -- `evaluarOfertas`
+  medía cada oferta contra el total de facturas del carrito de forma independiente, sin
+  descontar lo que una oferta ya aplicada "reservó". No afectaba el stock físico descontado
+  (`confirmar_venta` lo descuenta por renglón del carrito, no por oferta aplicada) pero sí el
+  monto total descontado en la venta. Se agrega un mapa de cantidad disponible por producto que
+  se va decrementando a medida que se aplican ofertas, en el mismo orden en que llegan al motor
+  (orden alfabético por nombre, igual que `listOfertas`) -- una oferta evaluada más tarde ya no
+  puede usar unidades que una anterior se quedó.
+- **Depende de:** E6-5
+- **Archivos/módulos:** `services/beneficiosService.ts`
+- **Cambios de base de datos:** —
+- **Criterios de aceptación:**
+  - [x] Carrito con 12 facturas + 1 café con leche + 2 sobres de azúcar: solo aplica el combo
+        (evaluado primero, 2 facturas), la docena no entra (necesitaría 12 de las 10 que quedan)
+  - [x] El mismo carrito con 14 facturas: aplican las dos ofertas
+  - [x] `tsc --noEmit` y `eslint` sin errores
 
 ---
 
