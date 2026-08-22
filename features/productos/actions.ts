@@ -12,6 +12,7 @@ import {
   crearProducto as crearProductoRepo,
   actualizarProducto as actualizarProductoRepo,
   eliminarProducto as eliminarProductoRepo,
+  type ActualizarProductoPatch,
   type NuevoProducto,
   type Producto,
 } from "@/repositories/productosRepository";
@@ -59,20 +60,7 @@ export async function crearProducto(input: NuevoProducto): Promise<ActionResult<
 
 export async function actualizarProducto(
   id: string,
-  patch: Partial<
-    Pick<
-      Producto,
-      | "nombre"
-      | "categoria_id"
-      | "codigo_barras"
-      | "precio"
-      | "costo"
-      | "controla_stock"
-      | "stock_minimo"
-      | "dias_vencimiento_default"
-      | "activo"
-    >
-  >,
+  patch: ActualizarProductoPatch,
 ): Promise<ActionResult<void>> {
   return ejecutarAccion(async () => {
     await requireAdmin();

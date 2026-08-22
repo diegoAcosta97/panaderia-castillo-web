@@ -49,6 +49,9 @@ export function ProductoDialog({
   onSaved?: () => void;
 }) {
   const esEdicion = !!producto;
+  // Si el producto ya controlaba stock, stock_actual ya está seteado (no NULL, por el constraint
+  // controla_stock_requiere_stock_actual) y no hace falta -- ni conviene -- volver a pedirlo.
+  const controlaStockOriginal = producto?.controla_stock ?? false;
   const [open, setOpen] = useState(false);
   const [nombre, setNombre] = useState(producto?.nombre ?? "");
   const [categoriaId, setCategoriaId] = useState(
@@ -90,6 +93,7 @@ export function ProductoDialog({
 
     try {
       if (producto) {
+        const habilitaControlStock = controlaStock && !controlaStockOriginal;
         throwIfActionError(
           await actualizarProducto(producto.id, {
             nombre,
@@ -100,6 +104,9 @@ export function ProductoDialog({
             controla_stock: controlaStock,
             stock_minimo: controlaStock && stockMinimo ? Number(stockMinimo) : null,
             dias_vencimiento_default: diasVencimiento ? Number(diasVencimiento) : null,
+            ...(habilitaControlStock
+              ? { stock_inicial: stockInicial ? Number(stockInicial) : 0 }
+              : {}),
           }),
         );
       } else {
@@ -265,7 +272,7 @@ export function ProductoDialog({
             <Label htmlFor="producto-controla-stock">Controla stock</Label>
           </div>
 
-          {controlaStock && !esEdicion && (
+          {controlaStock && (!esEdicion || !controlaStockOriginal) && (
             <div className="grid gap-2">
               <Label htmlFor="producto-stock-inicial">Stock inicial</Label>
               <Input
@@ -277,6 +284,11 @@ export function ProductoDialog({
                 value={stockInicial}
                 onChange={(e) => setStockInicial(e.target.value)}
               />
+              {esEdicion && (
+                <p className="text-xs text-muted-foreground">
+                  Este producto no controlaba stock -- indicá con cuánto arranca.
+                </p>
+              )}
             </div>
           )}
 

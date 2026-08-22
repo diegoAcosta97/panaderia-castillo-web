@@ -227,29 +227,54 @@ export async function crearProducto(
   );
 }
 
+export type ActualizarProductoPatch = Partial<
+  Pick<
+    Producto,
+    | "nombre"
+    | "categoria_id"
+    | "codigo_barras"
+    | "precio"
+    | "costo"
+    | "controla_stock"
+    | "stock_minimo"
+    | "dias_vencimiento_default"
+    | "activo"
+  >
+> & {
+  // Solo se manda al tildar "Controla stock" en un producto que antes no lo controlaba (RF-1.3):
+  // stock_actual queda NULL mientras controla_stock es false (crearProducto), así que habilitarlo
+  // sin pedir un stock inicial dejaba el producto en un estado que rompía confirmar_venta/
+  // registrar_merma/registrar_consumo_interno -- ver 20260822090000_fix_stock_actual_null_constraint.
+  // Ausente (no solo `undefined`) en cualquier otro caso, para no pisar el stock_actual de un
+  // producto que ya lo tenía seteado.
+  stock_inicial?: number;
+};
+
 export async function actualizarProducto(
   supabase: SupabaseClient<Database>,
   id: string,
-  patch: Partial<
-    Pick<
-      Producto,
-      | "nombre"
-      | "categoria_id"
-      | "codigo_barras"
-      | "precio"
-      | "costo"
-      | "controla_stock"
-      | "stock_minimo"
-      | "dias_vencimiento_default"
-      | "activo"
-    >
-  >,
+  patch: ActualizarProductoPatch,
 ): Promise<void> {
+  const { stock_inicial, ...camposProducto } = patch;
+  const habilitaControlStock = camposProducto.controla_stock === true && stock_inicial !== undefined;
+
   const { error } = await supabase
     .from("productos")
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update({
+      ...camposProducto,
+      ...(habilitaControlStock ? { stock_actual: stock_inicial } : {}),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id);
   if (error) throw error;
+
+  if (habilitaControlStock && stock_inicial! > 0) {
+    const { error: errorAlta } = await supabase.rpc("registrar_alta_inicial_stock", {
+      p_producto_id: id,
+      p_cantidad: stock_inicial,
+    });
+    if (errorAlta) throw errorAlta;
+  }
 }
 
 // Borrado real (no desactivar): las FKs de renglones_venta/movimientos_stock/etc. rechazan el
